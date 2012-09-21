@@ -9,10 +9,14 @@ class Mathe
 	end
 end
 
-EventMachine::run {
-	Fiber.new{
-		PwrCall.listen("0.0.0.0", 10000) do |pwr|
-			pwr.register(Mathe.new, "foobar")
-		end
-	}.resume
-}
+begin
+	EventMachine::run do
+		Fiber.new{
+			PwrCall.listen("0.0.0.0", 10000) do |pwr|
+				pwr.register(Mathe.new, "foobar")
+			end
+		}.resume
+	end
+rescue Interrupt
+	puts "Exiting."
+end

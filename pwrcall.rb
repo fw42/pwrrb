@@ -2,6 +2,17 @@
 require 'eventmachine'
 require 'fiber'
 require './pwrunpackers.rb'
+require 'logger'
+
+VERSION = "PWR_Ruby_1.9.3.1.3_itsec_cloud_git_42"
+OP = { request: 0, response: 1, notify: 2 }
+
+$logger = Logger.new(STDOUT)
+$logger.level = Logger::INFO
+
+$logger.formatter = proc { |severity, datetime, progname, msg|
+	puts "[#{datetime.strftime("%H:%M:%S")}] #{severity[0,1]}: #{msg}"
+}
 
 class PwrCall
 	def initialize(pwr)
@@ -16,7 +27,7 @@ class PwrCall
 
 	def self.listen(server, port, packers=nil, &block)
 		EventMachine::start_server(server, port, PwrCallConnection, packers, true) do |srv|
-			block.yield(srv)
+			block.yield(PwrCall.new(srv))
 		end
 	end
 
@@ -26,12 +37,6 @@ class PwrCall
 end
 
 module PwrCallConnection
-
-	VERSION = "PWR_Ruby_1.9.3.1.3_itsec_cloud_git_42"
-	OP = { request: 0, response: 1, notify: 2 }
-
-	######
-
 	def initialize(packers=nil, server=false)
 		@ready = false
 		@msgid = 0
@@ -44,11 +49,17 @@ module PwrCallConnection
 	end
 
 	def post_init
+		@port, @ip = Socket.unpack_sockaddr_in(get_peername)
+		$logger.info("Connection with #{@ip}:#{@port} established")
 		send_hello()
 	end
 
+	def unbind
+		$logger.info("Connection with #{@ip}:#{@port} closed")
+	end
+
 	def receive_data(data)
-		puts "<< #{data.inspect}"
+		$logger.debug("<< " + data.inspect)
 
 		if !@ready
 			@buf << data
@@ -63,8 +74,8 @@ module PwrCallConnection
 					@fiber.resume unless @server
 				end
 				if !@ready
-					STDERR.puts "No supported packers in common :-("
-					return
+					$logger.fatal("No supported packers in common :-(")
+					exit
 				end
 				data = @buf
 			end
@@ -100,7 +111,7 @@ module PwrCallConnection
 		if opcode == OP[:request] then
 			handle_request(msgid, packet[2], packet[3], packet[4])
 		elsif opcode == OP[:response] then
-			handle_error(msgid, packet[2], packet[3])
+			handle_response(msgid, packet[2], packet[3])
 		elsif opcode == OP[:notify] then
 			# TODO
 		else
@@ -109,10 +120,10 @@ module PwrCallConnection
 	end
 
 	def handle_request(msgid, ref, fn, params)
-		puts "New request: #{fn}(#{params.inspect})"
+		$logger.info("Incoming req.: <#{msgid}> #{ref}.#{fn}(#{params.inspect[1..-2]})")
 		if obj = @exports[ref]
 			if obj.respond_to?(fn)
-				Fiber.new{ send_result(msgid, obj.send(fn, *params)) }.resume
+				Fiber.new{ send_response(msgid, obj.send(fn, *params)) }.resume
 			else
 				send_error(msgid, "#{ref} has no method #{fn}")
 			end
@@ -121,7 +132,8 @@ module PwrCallConnection
 		end
 	end
 
-	def handle_error(msgid, error, result)
+	def handle_response(msgid, error, result)
+		$logger.info("Incoming res.: <#{msgid}> #{[error, result].inspect}")
 		@pending[msgid].resume(error ? error : result)
 	end
 
@@ -132,7 +144,7 @@ module PwrCallConnection
 	######
 
 	def send(data)
-		puts ">> #{data.inspect}"
+		$logger.debug(">> " + data.inspect)
 		send_data(data)
 	end
 
@@ -141,10 +153,12 @@ module PwrCallConnection
 	end
 
 	def send_request(msgid, ref, fn, *params)
+		$logger.info("Outgoing req.: #{ref}.#{fn}(#{params.inspect[1..-2]})")
 		send(@packer.pack([ OP[:request], msgid, ref, fn, params ]))
 	end
 
-	def send_result(msgid, result)
+	def send_response(msgid, result)
+		$logger.info("Outgoing res.: <#{msgid}> #{result.inspect}")
 		send(@packer.pack([ OP[:response], msgid, nil, result ]))
 	end
 
