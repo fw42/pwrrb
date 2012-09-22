@@ -17,6 +17,7 @@ $logger.formatter = proc { |severity, datetime, progname, msg|
 class PwrCall
 	def initialize(pwr)
 		@pwr = pwr
+		pwr.connection_established
 	end
 
 	def self.connect(server, port, packers=nil)
@@ -48,14 +49,8 @@ module PwrCallConnection
 		@server = server
 	end
 
-	def post_init
-		@port, @ip = Socket.unpack_sockaddr_in(get_peername)
-		$logger.info("Connection with #{@ip}:#{@port} established")
-		send_hello()
-	end
-
 	def unbind
-		$logger.info("Connection with #{@ip}:#{@port} closed")
+		$logger.info("Connection with #{@ip}:#{@port} closed") if @ready
 	end
 
 	def receive_data(data)
@@ -104,6 +99,12 @@ module PwrCallConnection
 	end
 
 	######
+
+	def connection_established
+		@port, @ip = Socket.unpack_sockaddr_in(get_peername)
+		$logger.info("Connection with #{@ip}:#{@port} established")
+		send_hello()
+	end
 
 	def handle_packet(packet)
 		opcode, msgid = packet[0..1]

@@ -36,6 +36,8 @@ begin
 				res = pwr.call("foobar", "add", 17, 5)
 			}.resume
 
+			# TODO: terminate iff all results came
+
 		}.resume
 	}
 rescue Interrupt
