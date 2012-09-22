@@ -18,32 +18,26 @@ class Hello
 	end
 end
 
-EventMachine::run {
-	Fiber.new{
-
-#		pwr = PwrCall.connect("137.226.161.231", 10000)
-		pwr = PwrCall.connect("localhost", 10000)
-
+begin
+	EventMachine::run {
 		Fiber.new{
-			puts "Now calling add(23,42)..."
-			res = pwr.call("foobar", "add", 23, 42)
-			puts "... add(23,42) returned #{res}"
 
-			puts "Now calling add(17,42)..."
-			res = pwr.call("foobar", "add", 17, 42)
-			puts "... add(17,42) returned #{res}"
+#			pwr = PwrCall.connect("137.226.161.231", 10000)
+			pwr = PwrCall.connect("localhost", 10001)
+			pwr.register(Hello.new, "hellocap")
+
+			Fiber.new{
+				res = pwr.call("foobar", "add", 23, 42)
+				res = pwr.call("foobar", "add", 17, 42)
+			}.resume
+
+			Fiber.new{
+#				pwr.call("foobar", "callme", "hellocap", "hello_sleep")
+				res = pwr.call("foobar", "add", 17, 5)
+			}.resume
+
 		}.resume
-
-		Fiber.new{
-#			pwr.register(Hello.new, "hellocap")
-#			puts "Now calling callme(hello_sleep)..."
-#			pwr.call("foobar", "callme", "hellocap", "hello_sleep")
-#			puts "callme() called"
-
-			puts "Now calling add(17,5)..."
-			res = pwr.call("foobar", "add", 17, 5)
-			puts "... add(17,5) returned #{res}"
-		}.resume
-
-	}.resume
-}
+	}
+rescue Interrupt
+	puts "Exiting."
+end

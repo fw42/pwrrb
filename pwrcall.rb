@@ -153,7 +153,7 @@ module PwrCallConnection
 	end
 
 	def send_request(msgid, ref, fn, *params)
-		$logger.info("Outgoing req.: #{ref}.#{fn}(#{params.inspect[1..-2]})")
+		$logger.info("Outgoing req.: <#{msgid}> #{ref}.#{fn}(#{params.inspect[1..-2]})")
 		send(@packer.pack([ OP[:request], msgid, ref, fn, params ]))
 	end
 

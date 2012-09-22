@@ -12,7 +12,7 @@ end
 begin
 	EventMachine::run do
 		Fiber.new{
-			PwrCall.listen("0.0.0.0", 10000) do |pwr|
+			PwrCall.listen("0.0.0.0", 10001) do |pwr|
 				pwr.register(Mathe.new, "foobar")
 			end
 		}.resume
