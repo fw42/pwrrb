@@ -8,16 +8,11 @@ class Stuff
 		a+b
 	end
 
-	# TODO: fixme
 	def sleep(n)
-		mysleep(n)
+		f = Fiber.current
+		EventMachine::Timer.new(n) do f.resume end
+		Fiber.yield
 	end
-end
-
-def mysleep(n)
-	f = Fiber.current
-	EventMachine::Timer.new(n) do f.resume end
-	Fiber.yield
 end
 
 begin

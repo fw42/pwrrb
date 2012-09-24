@@ -68,7 +68,7 @@ end
 
 module PwrConnection
 	OP = { request: 0, response: 1, notify: 2 }
-	VERSION = "PWR_Ruby_1.9.3.1.3_itsec_cloud_git_42"
+	VERSION = "pwrcallrb_v0.1"
 
 	def initialize(node, packers=nil, server=false)
 		@node = node
