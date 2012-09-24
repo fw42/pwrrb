@@ -15,6 +15,12 @@ class Mathe
 	end
 end
 
+class Callme
+	def callme()
+		
+	end
+end
+
 def mysleep(n)
 	f = Fiber.current
 	EventMachine::Timer.new(n) do f.resume end
@@ -24,9 +30,9 @@ end
 begin
 	EventMachine::run do
 		Fiber.new{
-			PwrCall.listen("0.0.0.0", 10001) do |pwr|
-				pwr.register(Mathe.new, "foobar")
-			end
+			node = PwrNode.new()
+			node.register(Mathe.new, "foobar")
+			node.listen("0.0.0.0", 10001) {}
 		}.resume
 	end
 rescue Interrupt

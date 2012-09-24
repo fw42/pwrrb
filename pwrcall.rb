@@ -10,39 +10,35 @@ OP = { request: 0, response: 1, notify: 2 }
 $logger = Logger.new(STDOUT)
 $logger.level = Logger::INFO
 
-$logger.formatter = proc { |severity, datetime, progname, msg|
+$logger.formatter = proc do |severity, datetime, progname, msg|
 	puts "[#{datetime.strftime("%H:%M:%S")}] #{severity[0,1]}: #{msg}"
-}
+end
 
-class PwrCall
-	def initialize(pwr)
-		@pwr = pwr
+class PwrNode
+	def initialize()
+		@exports = {}
 	end
 
-	def self.connect(server, port, packers=nil)
-		pwr = EventMachine::connect(server, port, PwrCallConnection, packers)
+	def register(obj, ref)
+		@exports[ref] = obj
+	end
+
+	def obj(ref)
+		@exports[ref]
+	end
+
+	def connect(server, port, packers=nil)
+		pwr = EventMachine::connect(server, port, PwrConnection, self, packers)
 		Fiber.yield
-		PwrCall.new(pwr)
+		return pwr
 	end
 
-	def self.listen(server, port, packers=nil, &block)
-		EventMachine::start_server(server, port, PwrCallConnection, packers, true) do |c|
+	def listen(server, port, packers=nil, &block)
+		EventMachine::start_server(server, port, PwrConnection, self, packers, true) do |c|
 			c.connection_established
-			block.yield(PwrCall.new(c))
+			block.yield(c)
 		end
 	end
-
-	def call(*args)
-		@pwr.call(*args)
-	end
-
-	def register(*args)
-		@pwr.register(*args)
-	end
-
-#	def method_missing(m, *args, &block)
-#		@pwr.method(m).call(*args)
-#	end  
 end
 
 class PwrResult
@@ -51,34 +47,28 @@ class PwrResult
 	end
 
 	def result()
-#		return @buf if @buf
 		Fiber.yield
 	end
 
 	def set(result)
-#		if @fiber.alive? then
-			@fiber.resume(result)
-#		else
-#			puts "Fiber is dead. buffering result."
-#			@buf = result
-#		end
+		@fiber.resume(result)
 	end
 end
 
-module PwrCallConnection
-	def initialize(packers=nil, server=false)
+module PwrConnection
+	def initialize(node, packers=nil, server=false)
+		@node = node
 		@ready = false
 		@msgid = 0
-		@pending = {}
-		@exports = {}
 		@fiber = Fiber.current
 		@packers = packers || PwrUnpacker.unpackers.keys
 		@buf = ""
 		@server = server
+		@pending = {}
 	end
 
 	def unbind
-		$logger.info("Connection with #{@ip}:#{@port} closed") if @ready
+		$logger.info("Connection with #{@ip}:#{@port} closed") if @ip
 	end
 
 	def connection_completed
@@ -128,10 +118,6 @@ module PwrCallConnection
 		return @pending[@msgid-1]
 	end
 
-	def register(obj, ref)
-		@exports[ref] = obj
-	end
-
 	######
 
 	def connection_established
@@ -155,7 +141,7 @@ module PwrCallConnection
 
 	def handle_request(msgid, ref, fn, params)
 		$logger.info("Incoming req.: <#{msgid}> #{ref}.#{fn}(#{params.inspect[1..-2]})")
-		if obj = @exports[ref]
+		if obj = @node.obj(ref)
 			if obj.respond_to?(fn)
 				send_response(msgid, obj.send(fn, *params))
 			else

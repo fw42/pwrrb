@@ -61,7 +61,11 @@ class PwrBSON < PwrUnpacker
 			@buf = @buf[len..-1] || ""
 			begin
 				blob = BSON.deserialize(blob)
-				@ready.push(blob['data']) if blob['data']
+				if blob['data']
+					@ready.push(blob['data'])
+				else
+					$logger.warn("BSON error: parsed hash does not contain data field")
+				end
 			rescue TypeError
 				$logger.warn("BSON parsing error: #{blob.inspect}")
 			end

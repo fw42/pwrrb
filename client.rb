@@ -10,11 +10,8 @@ class Hello
 	end
 
 	def hello_sleep(p)
-		f = Fiber.current
-		EventMachine::Timer.new(5) do
-			f.resume(hello(p))
-		end
-		Fiber.yield
+		mysleep(5)
+		hello()
 	end
 end
 
@@ -28,9 +25,11 @@ begin
 	EventMachine::run {
 		Fiber.new{
 
-#			pwr = PwrCall.connect("localhost", 10000)
-			pwr = PwrCall.connect("localhost", 10001, ['bson'])
-			pwr.register(Hello.new, "hellocap")
+			node = PwrNode.new();
+			node.register(Hello.new, "hellocap")
+
+#			pwr = node.connect("localhost", 10000)
+			pwr = node.connect("localhost", 10001, ['bson'])
 
 			Fiber.new{
 				puts "23 + 42 = #{pwr.call("foobar", "add", 23, 42).result()}"
@@ -38,10 +37,7 @@ begin
 			}.resume
 
 			Fiber.new{
-#				pwr.call("foobar", "callme", "hellocap", "hello_sleep")
-				res = pwr.call("foobar", "add", 17, 5)
-				mysleep(2)
-				puts "17 + 5 = #{res.result()}"
+				puts "17 + 5 = #{pwr.call("foobar", "add", 17, 5).result()}"
 			}.resume
 
 			# TODO: terminate iff all results came
