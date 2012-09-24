@@ -7,6 +7,18 @@ class Mathe
 	def add(a,b)
 		a+b
 	end
+
+	# TODO: fixme
+	def sleepadd(a,b)
+		mysleep(1)
+		a+b
+	end
+end
+
+def mysleep(n)
+	f = Fiber.current
+	EventMachine::Timer.new(n) do f.resume end
+	Fiber.yield
 end
 
 begin

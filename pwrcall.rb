@@ -17,7 +17,6 @@ $logger.formatter = proc { |severity, datetime, progname, msg|
 class PwrCall
 	def initialize(pwr)
 		@pwr = pwr
-		pwr.connection_established
 	end
 
 	def self.connect(server, port, packers=nil)
@@ -27,14 +26,43 @@ class PwrCall
 	end
 
 	def self.listen(server, port, packers=nil, &block)
-		EventMachine::start_server(server, port, PwrCallConnection, packers, true) do |srv|
-			block.yield(PwrCall.new(srv))
+		EventMachine::start_server(server, port, PwrCallConnection, packers, true) do |c|
+			c.connection_established
+			block.yield(PwrCall.new(c))
 		end
 	end
 
-	def method_missing(m, *args, &block)
-		@pwr.method(m).call(*args)
-	end  
+	def call(*args)
+		@pwr.call(*args)
+	end
+
+	def register(*args)
+		@pwr.register(*args)
+	end
+
+#	def method_missing(m, *args, &block)
+#		@pwr.method(m).call(*args)
+#	end  
+end
+
+class PwrResult
+	def initialize()
+		@fiber = Fiber.current
+	end
+
+	def result()
+#		return @buf if @buf
+		Fiber.yield
+	end
+
+	def set(result)
+#		if @fiber.alive? then
+			@fiber.resume(result)
+#		else
+#			puts "Fiber is dead. buffering result."
+#			@buf = result
+#		end
+	end
 end
 
 module PwrCallConnection
@@ -53,6 +81,10 @@ module PwrCallConnection
 		$logger.info("Connection with #{@ip}:#{@port} closed") if @ready
 	end
 
+	def connection_completed
+		connection_established
+	end
+
 	def receive_data(data)
 		$logger.debug("<< " + data.inspect)
 
@@ -64,9 +96,11 @@ module PwrCallConnection
 			if hello = /^pwrcall ([^\s]*) - caps: (.*)$/.match(line)
 				hello[2].split(",").map{ |cap| cap.strip }.each do |cap|
 					next unless @packers.include?(cap) and PwrUnpacker.unpackers[cap]
+					$logger.debug("Handshake with #{@ip}:#{@port} completed. Using #{cap} packer.")
 					@ready = true
 					@packer = PwrUnpacker.unpackers[cap].new()
 					@fiber.resume unless @server
+					break
 				end
 				if !@ready
 					$logger.fatal("No supported packers in common :-(")
@@ -78,7 +112,7 @@ module PwrCallConnection
 
 		if @ready
 			@packer.feed(data)
-			if unpacked = @packer.next
+			while unpacked = @packer.next
 				handle_packet(unpacked)
 			end
 			return
@@ -88,10 +122,10 @@ module PwrCallConnection
 	######
 
 	def call(ref, fn, *params)
-		@pending[@msgid] = Fiber.current
+		@pending[@msgid] = PwrResult.new()
 		send_request(@msgid, ref, fn, *params)
 		@msgid += 1
-		Fiber.yield
+		return @pending[@msgid-1]
 	end
 
 	def register(obj, ref)
@@ -108,13 +142,12 @@ module PwrCallConnection
 
 	def handle_packet(packet)
 		opcode, msgid = packet[0..1]
-
 		if opcode == OP[:request] then
 			handle_request(msgid, packet[2], packet[3], packet[4])
 		elsif opcode == OP[:response] then
 			handle_response(msgid, packet[2], packet[3])
 		elsif opcode == OP[:notify] then
-			# TODO
+			$logger.warn("Notify received. Not implemented yet! :-(")
 		else
 			handle_unknown(opcode, msgid)
 		end
@@ -124,7 +157,7 @@ module PwrCallConnection
 		$logger.info("Incoming req.: <#{msgid}> #{ref}.#{fn}(#{params.inspect[1..-2]})")
 		if obj = @exports[ref]
 			if obj.respond_to?(fn)
-				Fiber.new{ send_response(msgid, obj.send(fn, *params)) }.resume
+				send_response(msgid, obj.send(fn, *params))
 			else
 				send_error(msgid, "#{ref} has no method #{fn}")
 			end
@@ -135,10 +168,11 @@ module PwrCallConnection
 
 	def handle_response(msgid, error, result)
 		$logger.info("Incoming res.: <#{msgid}> #{[error, result].inspect}")
-		@pending[msgid].resume(error ? error : result)
+		@pending[msgid].set(error ? error : result)
 	end
 
 	def handle_unknown(opcode, msgid)
+		$logger.debug("Error: <#{msgid}> Received unknown opcode #{opcode}")
 		send_error(msgid, "unknown opcode #{opcode}")
 	end
 

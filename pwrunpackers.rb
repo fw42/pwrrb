@@ -16,7 +16,7 @@ class PwrUnpacker
 	def pack() end
 
 	def self.unpackers()
-		{ 'json' => PwrJSON }
+		{ 'json' => PwrJSON, 'bson' => PwrBSON }
 	end
 end
 
@@ -29,7 +29,11 @@ class PwrJSON < PwrUnpacker
 	end
 
 	def feed(data)
-		@parser << data
+		begin
+			@parser << data
+		rescue Yajl::ParseError
+			$logger.warn("JSON parsing error: #{data.inspect}")
+		end
 	end
 
 	def pack(data)
@@ -43,23 +47,30 @@ class PwrJSON < PwrUnpacker
 end
 
 class PwrBSON < PwrUnpacker
-	def initliaze
+	def initialize
 		@buf = ""
+		super
 	end
 
 	def feed(data)
 		@buf += data
 		while @buf.length > 4
-			len = @buf[0,4].unpack("N")
+			len = @buf[0,4].unpack("N")[0]
 			break if @buf.length < len
 			blob = @buf[4,len-4]
 			@buf = @buf[len..-1] || ""
-			bson = BSON.deserialize(@buf.unpack("C"))
-			@ready.push(bson)
+			begin
+				blob = BSON.deserialize(blob)
+				@ready.push(blob['data']) if blob['data']
+			rescue TypeError
+				$logger.warn("BSON parsing error: #{blob.inspect}")
+			end
 		end
 	end
 
 	def pack(data)
-		[4+data.length].pack("N") + BSON.serialize(data).to_s
+#		puts [ data.length, [data.length].pack("N"), data ].inspect
+		bson = BSON.serialize({ data: data }).to_s
+		[4+bson.length].pack("N") + bson
 	end
 end
