@@ -50,8 +50,22 @@ class PwrResult
 		Fiber.yield
 	end
 
-	def set(result)
-		@fiber.resume(result)
+	def set(result=nil)
+		@fiber.resume(result) if @fiber.alive?
+	end
+end
+
+class PwrFiber < Fiber
+	def initialize(&block)
+		@r = PwrResult.new()
+		super do
+			block.yield
+			@r.set()
+		end
+	end
+
+	def wait()
+		@r.result()
 	end
 end
 
@@ -143,7 +157,8 @@ module PwrConnection
 		$logger.info("Incoming req.: <#{msgid}> #{ref}.#{fn}(#{params.inspect[1..-2]})")
 		if obj = @node.obj(ref)
 			if obj.respond_to?(fn)
-				send_response(msgid, obj.send(fn, *params))
+				Fiber.new{ 
+				send_response(msgid, obj.send(fn, *params)) }.resume
 			else
 				send_error(msgid, "#{ref} has no method #{fn}")
 			end

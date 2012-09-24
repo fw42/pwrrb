@@ -13,12 +13,12 @@ class Hello
 		mysleep(5)
 		hello()
 	end
-end
 
-def mysleep(n)
-	f = Fiber.current
-	EventMachine::Timer.new(n) do f.resume end
-	Fiber.yield
+	def mysleep(n)
+		f = Fiber.current
+		EventMachine::Timer.new(n) do f.resume end
+		Fiber.yield
+	end
 end
 
 begin
@@ -31,16 +31,22 @@ begin
 #			pwr = node.connect("localhost", 10000)
 			pwr = node.connect("localhost", 10001, ['bson'])
 
-			Fiber.new{
+			f1 = PwrFiber.new{
 				puts "23 + 42 = #{pwr.call("foobar", "add", 23, 42).result()}"
 				puts "17 + 42 = #{pwr.call("foobar", "add", 17, 42).result()}"
-			}.resume
+			}
 
-			Fiber.new{
+			f2 = PwrFiber.new{
+				pwr.call("foobar", "sleep", 3).result()
 				puts "17 + 5 = #{pwr.call("foobar", "add", 17, 5).result()}"
-			}.resume
+			}
 
-			# TODO: terminate iff all results came
+			f1.resume
+			f2.resume
+
+			f1.wait()
+			f2.wait()
+			EventMachine::stop_event_loop
 
 		}.resume
 	}

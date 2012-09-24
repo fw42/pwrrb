@@ -3,21 +3,14 @@ require 'eventmachine'
 require 'base64'
 require './pwrcall.rb'
 
-class Mathe
+class Stuff
 	def add(a,b)
 		a+b
 	end
 
 	# TODO: fixme
-	def sleepadd(a,b)
-		mysleep(1)
-		a+b
-	end
-end
-
-class Callme
-	def callme()
-		
+	def sleep(n)
+		mysleep(n)
 	end
 end
 
@@ -31,7 +24,7 @@ begin
 	EventMachine::run do
 		Fiber.new{
 			node = PwrNode.new()
-			node.register(Mathe.new, "foobar")
+			node.register(Stuff.new, "foobar")
 			node.listen("0.0.0.0", 10001) {}
 		}.resume
 	end
