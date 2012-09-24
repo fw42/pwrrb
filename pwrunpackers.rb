@@ -43,6 +43,7 @@ class PwrJSON < PwrUnpacker
 	private
 	def parse_complete(json)
 		@ready.push(json)
+		$logger.debug("JSON parsed: " + json.inspect)
 	end
 end
 
@@ -63,17 +64,17 @@ class PwrBSON < PwrUnpacker
 				blob = BSON.deserialize(blob)
 				if blob['data']
 					@ready.push(blob['data'])
+					$logger.debug("BSON parsed: " + blob.inspect)
 				else
 					$logger.warn("BSON error: parsed hash does not contain data field")
 				end
 			rescue TypeError
-				$logger.warn("BSON parsing error: #{blob.inspect}")
+				$logger.warn("BSON error: Failed to parse #{blob.inspect}")
 			end
 		end
 	end
 
 	def pack(data)
-#		puts [ data.length, [data.length].pack("N"), data ].inspect
 		bson = BSON.serialize({ data: data }).to_s
 		[4+bson.length].pack("N") + bson
 	end

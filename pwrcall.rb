@@ -4,9 +4,6 @@ require 'fiber'
 require './pwrunpackers.rb'
 require 'logger'
 
-VERSION = "PWR_Ruby_1.9.3.1.3_itsec_cloud_git_42"
-OP = { request: 0, response: 1, notify: 2 }
-
 $logger = Logger.new(STDOUT)
 $logger.level = Logger::INFO
 
@@ -70,6 +67,9 @@ class PwrFiber < Fiber
 end
 
 module PwrConnection
+	OP = { request: 0, response: 1, notify: 2 }
+	VERSION = "PWR_Ruby_1.9.3.1.3_itsec_cloud_git_42"
+
 	def initialize(node, packers=nil, server=false)
 		@node = node
 		@ready = false
@@ -83,6 +83,7 @@ module PwrConnection
 
 	def unbind
 		$logger.info("Connection with #{@ip}:#{@port} closed") if @ip
+		@fiber.resume if !@server and @fiber.alive?
 	end
 
 	def connection_completed
@@ -108,7 +109,6 @@ module PwrConnection
 				end
 				if !@ready
 					$logger.fatal("No supported packers in common :-(")
-					exit
 				end
 				data = @buf
 			end

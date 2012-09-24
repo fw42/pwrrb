@@ -25,7 +25,7 @@ begin
 		Fiber.new{
 			node = PwrNode.new()
 			node.register(Stuff.new, "foobar")
-			node.listen("0.0.0.0", 10001) {}
+			node.listen("0.0.0.0", 10001, ['bson']) {}
 		}.resume
 	end
 rescue Interrupt

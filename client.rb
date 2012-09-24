@@ -25,7 +25,7 @@ begin
 	EventMachine::run {
 		Fiber.new{
 
-			node = PwrNode.new();
+			node = PwrNode.new()
 			node.register(Hello.new, "hellocap")
 
 #			pwr = node.connect("localhost", 10000)
