@@ -108,4 +108,8 @@ class PwrBSON < PwrUnpacker
 		end
 		return BSON.serialize(data).to_s
 	end
+
+	def pack_binary(data)
+		pack(data, true)
+	end
 end
