@@ -19,8 +19,7 @@ class PwrNode
 
 	def connect(server, port, packers=nil)
 		pwr = EventMachine::connect(server, port, PwrConnection, self, packers)
-		Fiber.yield
-		return pwr
+		return Fiber.yield ? pwr : nil
 	end
 
 	def listen(server, port, packers=nil, &block)
@@ -75,8 +74,12 @@ module PwrConnection
 	end
 
 	def unbind
-		$logger.info("Connection with #{@ip}:#{@port} closed") if @ip
-		@fiber.resume if !@server and @fiber.alive?
+		if @ip
+			$logger.info("Connection with #{@ip}:#{@port} closed")
+		elsif !@server and @fiber.alive?
+			$logger.error("Connection failed")
+			@fiber.resume(false)
+		end
 	end
 
 	def connection_completed
@@ -97,7 +100,7 @@ module PwrConnection
 					$logger.debug("Handshake with #{@ip}:#{@port} completed. Using #{cap} packer.")
 					@ready = true
 					@packer = PwrUnpacker.unpackers[cap].new()
-					@fiber.resume unless @server
+					@fiber.resume(true) unless @server
 					break
 				end
 				if !@ready

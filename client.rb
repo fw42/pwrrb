@@ -41,11 +41,13 @@ begin
 				puts "17 + 5 = #{pwr.call("foobar", "add", 17, 5).result()}"
 			}
 
-			f1.resume
-			f2.resume
+			if pwr
+				f1.resume
+				f2.resume
+				f1.wait()
+				f2.wait()
+			end
 
-			f1.wait()
-			f2.wait()
 			EventMachine::stop_event_loop
 
 		}.resume
