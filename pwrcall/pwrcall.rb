@@ -15,9 +15,12 @@ class PwrNode
 		@exports[ref]
 	end
 
+	###### Plain
+
 	def connect(server, port, packers=nil)
 		pwrconn = PwrCallConnection.new(self, packers)
 		EventMachine::connect(server, port, PwrConnectionHandlerPlain, pwrconn)
+		pwrconn.send_hello()
 		return Fiber.yield ? pwrconn : nil
 	end
 
@@ -26,10 +29,17 @@ class PwrNode
 			pwrconn = PwrCallConnection.new(self, packers, true)
 			c.set_connection(pwrconn)
 			c.connection_completed
+			pwrconn.send_hello()
 			block.yield(pwrconn)
 		end
 		$logger.info("Listening on #{server}:#{port}")
 	end
+
+	###### SSL
+
+	# TODO
+
+	###### PwrTLS
 
 	def connect_pwrtls(server, port, packers=nil)
 		pwrconn = PwrCallConnection.new(self, packers)
@@ -40,6 +50,11 @@ class PwrNode
 	def listen_pwrtls(server, port, packers=nil, &block)
 		# TODO
 	end
+
+	###### PwrPSK
+
+	# TODO
+
 end
 
 class PwrResult
@@ -113,12 +128,16 @@ class PwrCallConnection < PwrConnection
 		return @pending[@msgid-1]
 	end
 
+	def send_hello
+		send("pwrcall %s - caps: %s\n" % [ VERSION, @packers.join(",") ])
+	end
+
 	######
 
 	public
 
 	def connection_completed
-		connection_established
+		@port, @ip = Socket.unpack_sockaddr_in(@connection_handler.get_peername)
 	end
 
 	def receive_data(data)
@@ -168,11 +187,6 @@ class PwrCallConnection < PwrConnection
 	######
 
 	private
-
-	def connection_established()
-		@port, @ip = Socket.unpack_sockaddr_in(@connection_handler.get_peername)
-		send_hello()
-	end
 
 	def handle_packet(packet)
 		opcode, msgid = packet[0..1]
@@ -236,10 +250,6 @@ class PwrCallConnection < PwrConnection
 	def send_response(msgid, result)
 		$logger.info("Outgoing res.: <#{msgid}> #{result.inspect}")
 		send(@packer.pack([ OP[:response], msgid, nil, result ]))
-	end
-
-	def send_hello
-		send("pwrcall %s - caps: %s\n" % [ VERSION, @packers.join(",") ])
 	end
 end
 
