@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 require 'eventmachine'
-require './pwrtls.rb'
+require '../pwrtls.rb'
 
 begin
 	EventMachine::run {

@@ -5,6 +5,41 @@ require File.dirname(__FILE__) + '/pwrunpackers.rb'
 require File.dirname(__FILE__) + '/logger.rb'
 require File.dirname(__FILE__) + '/pwrtls.rb'
 
+class PwrNode
+	def initialize()
+		@exports = {}
+	end
+
+	def register(obj, ref)
+		@exports[ref] = obj
+	end
+
+	def obj(ref)
+		@exports[ref]
+	end
+
+	def connect(server, port, packers=nil)
+		pwrconn = PwrConnection.new(self, packers)
+		EventMachine::connect(server, port, PwrConnectionHandlerPlain, pwrconn)
+		return Fiber.yield ? pwrconn : nil
+	end
+
+	def connect_pwrtls(server, port, packers=nil)
+		pwrconn = PwrConnection.new(self, packers)
+		EventMachine::connect(server, port, PwrConnectionHandlerPwrTLS, pwrconn)
+		return Fiber.yield ? pwrconn : nil
+	end
+
+	def listen(server, port, packers=nil, &block)
+		EventMachine::start_server(server, port, PwrConnectionHandlerPlain) do |c|
+			pwrconn = PwrConnection.new(self, packers, true)
+			c.set_connection(pwrconn)
+			pwrconn.connection_completed
+			block.yield(pwrconn)
+		end
+	end
+end
+
 class PwrResult
 	def initialize()
 		@fiber = Fiber.current
@@ -49,41 +84,6 @@ class PwrFiber < Fiber
 
 	def wait()
 		@r.result()
-	end
-end
-
-class PwrNode
-	def initialize()
-		@exports = {}
-	end
-
-	def register(obj, ref)
-		@exports[ref] = obj
-	end
-
-	def obj(ref)
-		@exports[ref]
-	end
-
-	def connect(server, port, packers=nil)
-		pwrconn = PwrConnection.new(self, packers)
-		EventMachine::connect(server, port, PwrConnectionHandlerPlain, pwrconn)
-		return Fiber.yield ? pwrconn : nil
-	end
-
-	def connect_pwrtls(server, port, packers=nil)
-		pwrconn = PwrConnection.new(self, packers)
-		EventMachine::connect(server, port, PwrConnectionHandlerPwrTLS, pwrconn)
-		return Fiber.yield ? pwrconn : nil
-	end
-
-	def listen(server, port, packers=nil, &block)
-		EventMachine::start_server(server, port, PwrConnectionHandlerPlain) do |c|
-			pwrconn = PwrConnection.new(self, packers, true)
-			c.set_connection(pwrconn)
-			pwrconn.connection_completed
-			block.yield(pwrconn)
-		end
 	end
 end
 
