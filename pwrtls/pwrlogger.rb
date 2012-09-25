@@ -1,1 +1,0 @@
-../pwrtools/pwrlogger.rb

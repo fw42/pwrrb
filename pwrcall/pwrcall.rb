@@ -1,9 +1,10 @@
 #!/usr/bin/env ruby
 require 'eventmachine'
 require 'fiber'
-require File.dirname(__FILE__) + '/pwrunpackers.rb'
-require File.dirname(__FILE__) + '/pwrlogger.rb'
-require File.dirname(__FILE__) + '/pwrtls.rb'
+require File.dirname(__FILE__) + '/../pwrtools/pwrconnection.rb'
+require File.dirname(__FILE__) + '/../pwrtools/pwrunpackers.rb'
+require File.dirname(__FILE__) + '/../pwrtools/pwrlogger.rb'
+require File.dirname(__FILE__) + '/../pwrtls/pwrtls.rb'
 
 class PwrNode
 	def initialize()
@@ -19,24 +20,29 @@ class PwrNode
 	end
 
 	def connect(server, port, packers=nil)
-		pwrconn = PwrConnection.new(self, packers)
+		pwrconn = PwrCallConnection.new(self, packers)
 		EventMachine::connect(server, port, PwrConnectionHandlerPlain, pwrconn)
-		return Fiber.yield ? pwrconn : nil
-	end
-
-	def connect_pwrtls(server, port, packers=nil)
-		pwrconn = PwrConnection.new(self, packers)
-		EventMachine::connect(server, port, PwrConnectionHandlerPwrTLS, pwrconn)
 		return Fiber.yield ? pwrconn : nil
 	end
 
 	def listen(server, port, packers=nil, &block)
 		EventMachine::start_server(server, port, PwrConnectionHandlerPlain) do |c|
-			pwrconn = PwrConnection.new(self, packers, true)
+			pwrconn = PwrCallConnection.new(self, packers, true)
 			c.set_connection(pwrconn)
 			pwrconn.connection_completed
 			block.yield(pwrconn)
 		end
+		$logger.info("Listening on #{server}:#{port}")
+	end
+
+	def connect_pwrtls(server, port, packers=nil)
+		pwrconn = PwrCallConnection.new(self, packers)
+		EventMachine::connect(server, port, PwrConnectionHandlerPwrTLS, pwrconn)
+		return Fiber.yield ? pwrconn : nil
+	end
+
+	def listen_pwrtls(server, port, packers=nil, &block)
+		# TODO
 	end
 end
 
@@ -87,7 +93,7 @@ class PwrFiber < Fiber
 	end
 end
 
-class PwrConnection
+class PwrCallConnection < PwrConnection
 	OP = { request: 0, response: 1, notify: 2 }
 	VERSION = "pwrcallrb_v0.1"
 
@@ -109,10 +115,6 @@ class PwrConnection
 		send_request(@msgid, ref, fn, *params)
 		@msgid += 1
 		return @pending[@msgid-1]
-	end
-
-	def set_connection_handler(handler)
-		@connection_handler = handler
 	end
 
 	######
