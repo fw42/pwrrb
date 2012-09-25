@@ -6,15 +6,27 @@ require './logger'
 require './pwrunpackers.rb'
 
 module PwrTLS
-	def initialize()
+	def initialize(my_state=nil)
 		@state = :new
 		@me = {}
 		@me[:spk], @me[:ssk] = NaCl.crypto_box_keypair()
-		@me[:lpk], @me[:lsk] = NaCl.crypto_box_keypair()
-		@me[:nonce] = 1
-		@peer = { :nonce => 4 }
+		@me[:snonce] = 1
+		@peer = { :snonce => 4 }
 		@packer = PwrBSON.new()
 		@buf = ""
+
+		if my_state
+			@me[:lpk] = my_state['pubkey']
+			@me[:lsk] = my_state['privkey']
+			@me[:lnonce] = my_state['nonce']
+		else
+			init_new_state()
+		end
+	end
+
+	def init_new_state()
+		@me[:lpk], @me[:lsk] = NaCl.crypto_box_keypair()
+		@me[:lnonce] = 1
 	end
 
 	def connection_completed
@@ -46,15 +58,15 @@ module PwrTLS
 	end
 
 	def next_snonce()
-		@me[:nonce] += 2
-		return snonce(@me[:nonce])
+		@me[:snonce] += 2
+		return snonce(@me[:snonce])
 	end
 
 	def snonce(num)
 		"pwrnonceshortXXX" + [ num ].pack("Q")
 	end
 
-	def lnonce()
+	def lnonce(num)
 		"pwrnonce" + [ num, 2**47 + rand(2**47) ].pack("QQ")
 	end
 
@@ -79,7 +91,7 @@ module PwrTLS
 
 			$logger.info("Received SERVER HELLO from #{@peer[:ip]}:#{@peer[:port]}")
 
-			vn = lnonce()
+			vn = lnonce(@me[:lnonce])
 			@peer[:spk] = payload['spub'].to_s
 			vbox = NaCl.crypto_box(@me[:spk], vn, @peer[:lpk], @me[:lsk])
 			verifybox = NaCl.crypto_box(
@@ -88,12 +100,13 @@ module PwrTLS
 			)
 			$logger.info("Sent CLIENT VERIFY to #{@peer[:ip]}:#{@peer[:port]}")
 			send_framed(verifybox)
+			$logger.info("Handshake with #{@peer[:ip]}:#{@peer[:port]} complete")
 
 			@state = :ready
 		elsif @state == :ready
 			begin
-				payload = NaCl.crypto_box_open(packet, snonce(@peer[:nonce]), @peer[:spk], @me[:ssk])
-				@peer[:nonce] += 2
+				payload = NaCl.crypto_box_open(packet, snonce(@peer[:snonce]), @peer[:spk], @me[:ssk])
+				@peer[:snonce] += 2
 				$logger.debug("<< Got payload: " + payload.inspect)
 			rescue NaCl::OpenError
 				$logger.error("Decryption error!")
