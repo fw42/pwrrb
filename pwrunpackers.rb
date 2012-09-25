@@ -2,6 +2,7 @@
 require 'yajl'
 require 'json'
 require 'bson'
+require './logger.rb'
 
 class PwrUnpacker
 	def initialize()
