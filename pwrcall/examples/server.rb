@@ -5,6 +5,11 @@ class Stuff
 	def add(a,b)
 		a+b
 	end
+
+	def sleep(n)
+		Pwr.sleep(n)
+		return "Slept for #{n} seconds"
+	end
 end
 
 Pwr.run do
