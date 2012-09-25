@@ -16,17 +16,15 @@ end
 
 module PwrConnectionHandlerPwrTLS
 	def initialize(conn=nil)
-		@state = :new
-		@me = {}
+		@peer = { snonce: 0 }
+		@me = { snonce: 1 }
 		@me[:spk], @me[:ssk] = NaCl.crypto_box_keypair()
-		@me[:snonce] = 1
-		@peer = { :snonce => 0 }
 		@packer = PwrBSON.new()
 		@buf = ""
 
 		set_connection(conn)
 
-		if false
+		if false # TODO
 			@me[:lpk] = my_state['pubkey']
 			@me[:lsk] = my_state['privkey']
 			@me[:lnonce] = my_state['nonce']

@@ -1,12 +1,13 @@
 #!/usr/bin/env ruby
 require 'eventmachine'
-require File.dirname(__FILE__) + '/chat.rb'
 require File.dirname(__FILE__) + '/../pwrtls.rb'
 
-begin
-	EventMachine::run {
-		pwr = PwrTLS::listen("localhost", 10003, ChatExample.new) {}
-	}
-rescue Interrupt
-	puts "Exiting."
+class EchoServer < PwrConnection
+	def receive_data(data)
+		puts data
+	end
+end
+
+Pwr.run do
+	pwr = PwrTLS::listen("localhost", 10003, EchoServer.new) {}
 end
