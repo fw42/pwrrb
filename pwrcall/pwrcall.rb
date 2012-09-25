@@ -4,32 +4,6 @@ require 'fiber'
 require './pwrunpackers.rb'
 require './logger.rb'
 
-class PwrNode
-	def initialize()
-		@exports = {}
-	end
-
-	def register(obj, ref)
-		@exports[ref] = obj
-	end
-
-	def obj(ref)
-		@exports[ref]
-	end
-
-	def connect(server, port, packers=nil)
-		pwr = EventMachine::connect(server, port, PwrConnection, self, packers)
-		return Fiber.yield ? pwr : nil
-	end
-
-	def listen(server, port, packers=nil, &block)
-		EventMachine::start_server(server, port, PwrConnection, self, packers, true) do |c|
-			c.connection_established
-			block.yield(c)
-		end
-	end
-end
-
 class PwrResult
 	def initialize()
 		@fiber = Fiber.current
@@ -58,9 +32,40 @@ class PwrFiber < Fiber
 	end
 end
 
-module PwrConnection
+class PwrNode
+	def initialize()
+		@exports = {}
+	end
+
+	def register(obj, ref)
+		@exports[ref] = obj
+	end
+
+	def obj(ref)
+		@exports[ref]
+	end
+
+	def connect(server, port, packers=nil)
+		pwrconn = PwrConnection.new(self, packers)
+		plain = EventMachine::connect(server, port, PwrConnectionHandlerPlain, pwrconn)
+		return Fiber.yield ? pwrconn : nil
+	end
+
+	def listen(server, port, packers=nil, &block)
+		EventMachine::start_server(server, port, PwrConnectionHandlerPlain) do |c|
+			pwrconn = PwrConnection.new(self, packers, true)
+			c.set_connection(pwrconn)
+			pwrconn.connection_completed
+			block.yield(pwrconn)
+		end
+	end
+end
+
+class PwrConnection
 	OP = { request: 0, response: 1, notify: 2 }
 	VERSION = "pwrcallrb_v0.1"
+
+	public
 
 	def initialize(node, packers=nil, server=false)
 		@node = node
@@ -73,14 +78,20 @@ module PwrConnection
 		@pending = {}
 	end
 
-	def unbind
-		if @ip
-			$logger.info("Connection with #{@ip}:#{@port} closed")
-		elsif !@server and @fiber.alive?
-			$logger.error("Connection failed")
-			@fiber.resume(false)
-		end
+	def call(ref, fn, *params)
+		@pending[@msgid] = PwrResult.new()
+		send_request(@msgid, ref, fn, *params)
+		@msgid += 1
+		return @pending[@msgid-1]
 	end
+
+	def set_connection_handler(handler)
+		@connection_handler = handler
+	end
+
+	######
+
+	public
 
 	def connection_completed
 		connection_established
@@ -119,19 +130,21 @@ module PwrConnection
 		end
 	end
 
-	######
-
-	def call(ref, fn, *params)
-		@pending[@msgid] = PwrResult.new()
-		send_request(@msgid, ref, fn, *params)
-		@msgid += 1
-		return @pending[@msgid-1]
+	def unbind
+		if @ip
+			$logger.info("Connection with #{@ip}:#{@port} closed")
+		elsif !@server and @fiber.alive?
+			$logger.error("Connection failed")
+			@fiber.resume(false)
+		end
 	end
 
 	######
 
-	def connection_established
-		@port, @ip = Socket.unpack_sockaddr_in(get_peername)
+	private
+
+	def connection_established()
+		@port, @ip = Socket.unpack_sockaddr_in(@connection_handler.get_peername)
 		$logger.info("Connection with #{@ip}:#{@port} established")
 		send_hello()
 	end
@@ -175,9 +188,11 @@ module PwrConnection
 
 	######
 
+	private
+
 	def send(data)
 		$logger.debug(">> " + data.inspect)
-		send_data(data)
+		@connection_handler.send_data(data)
 	end
 
 	def send_error(msgid, error)
@@ -196,5 +211,28 @@ module PwrConnection
 
 	def send_hello
 		send("pwrcall %s - caps: %s\n" % [ VERSION, @packers.join(",") ])
+	end
+end
+
+module PwrConnectionHandlerPlain
+	def initialize(conn=nil)
+		set_connection(conn)
+	end
+
+	def set_connection(conn)
+		@conn = conn
+		@conn.set_connection_handler(self) if conn
+	end
+
+	def unbind()
+		@conn.unbind()
+	end
+
+	def receive_data(*args)
+		@conn.receive_data(*args)
+	end
+
+	def connection_completed(*args)
+		@conn.connection_completed(*args)
 	end
 end
