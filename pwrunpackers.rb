@@ -83,14 +83,29 @@ class PwrBSON < PwrUnpacker
 
 	def unpack(data)
 		begin
-			return BSON.deserialize(data)
+			data = BSON.deserialize(data)
+			data.each do |k,v|
+				if v.class == BSON::Binary then
+					data[k] = v.to_s
+				end
+			end
+			return data
 		rescue TypeError
 			$logger.warn("BSON error: Failed to parse #{blob.inspect}")
 		end
 		return nil
 	end
 
-	def pack(data)
-		BSON.serialize({ data: data }).to_s
+	def pack(data, binary=false)
+		if binary and data.class == Hash
+			data.each do |k,v|
+				if v.class == String then
+					data[k] = BSON::Binary.new(v)
+				end
+			end
+		elsif
+			data = { data: data }
+		end
+		return BSON.serialize(data).to_s
 	end
 end
