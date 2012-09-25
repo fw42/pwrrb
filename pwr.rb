@@ -8,11 +8,9 @@ require File.dirname(__FILE__) + '/pwrtools/pwrunpackers.rb'
 class Pwr
 	def self.run(&block)
 		begin
-			EventMachine::run{
-				Fiber.new{
-					block.yield
-				}.resume
-			}
+			EventMachine::run do
+				Fiber.new{ block.yield }.resume
+			end
 		rescue Interrupt
 			$logger.info("Exiting.")
 		end
