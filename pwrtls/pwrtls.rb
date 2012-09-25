@@ -169,5 +169,4 @@ module PwrConnectionHandlerPwrTLS
 		$logger.debug("PwrTLS>> " + data.inspect)
 		send_data(data)
 	end
-
 end

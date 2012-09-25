@@ -13,9 +13,9 @@ $logger.formatter = proc do |severity, datetime, progname, msg|
 #		level = level.cyan
 	elsif level == "W"
 		level = level.yellow
-	elsif level == "E"
+	elsif level == "E" or level == "F"
 		level = level.red
 	end
 #	puts "#{datetime.strftime("%H:%M:%S")} [#{level}] #{msg}"
-	puts "[#{level}] #{msg}"
+	puts "\r[#{level}] #{msg}"
 end

@@ -9,7 +9,6 @@ class Hello
 	end
 end
 
-
 begin
 	EventMachine::run {
 		Fiber.new{
@@ -17,13 +16,14 @@ begin
 			node = PwrNode.new()
 			node.register(Hello.new, "hello")
 
-			if (pwr = node.connect("localhost", 10001, ['bson'])) == nil
-#			if (pwr = node.connect_pwrtls("localhost", 10005, ['bson'])) == nil
-				EventMachine::stop_event_loop
-			end
+			pwr = node.connect("localhost", 10001, ['bson'])
+#			pwr = node.connect_pwrtls("localhost", 10005, ['bson'])
+
+			# Check if connection failed
+			exit unless pwr
 
 			# Sleep. This is "blocking".
-			pwr.call("foobar", "sleep", 1).result()
+			pwr.call("foobar", "sleep", 2).result()
 
 			# "Thread" 1
 			f1 = PwrFiber.new{
@@ -31,17 +31,15 @@ begin
 				puts "17 + 42 = #{pwr.call("foobar", "add", 17, 42).result()}"
 				res = pwr.call("foobar", "callme", "hello", "hello", "parameter eins", "parameter zwei").result()
 				puts res.inspect
-			}
-			f1.resume
+			}.resume()
 
 			# "Thread" 2
 			f2 = PwrFiber.new{
 				pwr.call("foobar", "sleep", 5).result()
 				puts "17 + 5 = #{pwr.call("foobar", "add", 17, 5).result()}"
-			}
-			f2.resume
+			}.resume()
 
-			# Wait for threads to finish
+			# Wait for Fibers to finish
 			f1.wait()
 			f2.wait()
 			EventMachine::stop_event_loop

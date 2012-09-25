@@ -42,6 +42,11 @@ class PwrFiber < Fiber
 		end
 	end
 
+	def resume(*args)
+		super(*args)
+		return self
+	end
+
 	def wait()
 		@r.result()
 	end
@@ -130,13 +135,15 @@ class PwrConnection
 				hello[2].split(",").map{ |cap| cap.strip }.each do |cap|
 					next unless @packers.include?(cap) and PwrUnpacker.unpackers[cap]
 					$logger.debug("Handshake with #{@ip}:#{@port} completed. Using #{cap} packer.")
+					$logger.info("PwrCall connection with #{@ip}:#{@port} established")
 					@ready = true
 					@packer = PwrUnpacker.unpackers[cap].new()
 					@fiber.resume(true) unless @server
 					break
 				end
 				if !@ready
-					$logger.fatal("No supported packers in common :-(")
+					$logger.error("No supported packers in common :-(")
+					unbind()
 				end
 				data = @buf
 			end
@@ -152,7 +159,7 @@ class PwrConnection
 	end
 
 	def unbind
-		if @ip
+		if @ip and @ready
 			$logger.info("PwrCall connection with #{@ip}:#{@port} closed")
 		elsif !@server and @fiber.alive?
 			$logger.error("Connection failed")
@@ -166,7 +173,6 @@ class PwrConnection
 
 	def connection_established()
 		@port, @ip = Socket.unpack_sockaddr_in(@connection_handler.get_peername)
-		$logger.info("PwrCall connection with #{@ip}:#{@port} established")
 		send_hello()
 	end
 
