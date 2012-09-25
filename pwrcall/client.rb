@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
 require 'eventmachine'
-require 'base64'
 require './pwrcall.rb'
 
 class Hello
