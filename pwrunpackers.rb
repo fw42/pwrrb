@@ -4,16 +4,17 @@ require 'json'
 require 'bson'
 
 class PwrUnpacker
-	def initialize
+	def initialize()
 		@ready = []
 	end
 
-	def next
+	def next()
 		@ready.shift
 	end
 
 	def feed(data) end
-	def pack() end
+	def pack(data) end
+	def unpack(data) end
 
 	def self.unpackers()
 		{ 'json' => PwrJSON, 'bson' => PwrBSON }
@@ -21,7 +22,7 @@ class PwrUnpacker
 end
 
 class PwrJSON < PwrUnpacker
-	def initialize
+	def initialize()
 		@parser = Yajl::Parser.new
 		@parser.on_parse_complete = method(:parse_complete)
 		@ready = []
@@ -36,6 +37,15 @@ class PwrJSON < PwrUnpacker
 		end
 	end
 
+	def unpack(data)
+		begin
+			return JSON.deserialize(data)
+		rescue JSON::ParserError
+			$logger.warn("JSON error: Failed to parse #{data.inspect}")
+		end
+		return nil
+	end
+
 	def pack(data)
 		data.map{ |d| d.class == String ? d.force_encoding('ISO-8859-1') : d }.to_json
 	end
@@ -48,7 +58,7 @@ class PwrJSON < PwrUnpacker
 end
 
 class PwrBSON < PwrUnpacker
-	def initialize
+	def initialize()
 		@buf = ""
 		super
 	end
@@ -56,26 +66,30 @@ class PwrBSON < PwrUnpacker
 	def feed(data)
 		@buf += data
 		while @buf.length > 4
-			len = @buf[0,4].unpack("N")[0]
+			len = @buf[0,4].unpack("l<")[0] # int32_t little endian
 			break if @buf.length < len
-			blob = @buf[4,len-4]
+			blob = @buf[0,len]
 			@buf = @buf[len..-1] || ""
-			begin
-				blob = BSON.deserialize(blob)
-				if blob['data']
-					@ready.push(blob['data'])
-					$logger.debug("BSON parsed: " + blob.inspect)
-				else
-					$logger.warn("BSON error: parsed hash does not contain data field")
-				end
-			rescue TypeError
-				$logger.warn("BSON error: Failed to parse #{blob.inspect}")
+			blob = unpack(blob)
+			if blob and blob['data']
+				@ready.push(blob['data'])
+				$logger.debug("BSON parsed: " + blob.inspect)
+			else
+				$logger.warn("BSON error: parsed hash does not contain data field")
 			end
 		end
 	end
 
+	def unpack(data)
+		begin
+			return BSON.deserialize(data)
+		rescue TypeError
+			$logger.warn("BSON error: Failed to parse #{blob.inspect}")
+		end
+		return nil
+	end
+
 	def pack(data)
-		bson = BSON.serialize({ data: data }).to_s
-		[4+bson.length].pack("N") + bson
+		BSON.serialize({ data: data }).to_s
 	end
 end
