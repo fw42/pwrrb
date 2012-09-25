@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 require 'eventmachine'
 require 'fiber'
-require './pwrunpackers.rb'
-require './logger.rb'
-require './pwrtls.rb'
+require File.dirname(__FILE__) + '/pwrunpackers.rb'
+require File.dirname(__FILE__) + '/logger.rb'
+require File.dirname(__FILE__) + '/pwrtls.rb'
 
 class PwrResult
 	def initialize()

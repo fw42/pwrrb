@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 require 'eventmachine'
-require './pwrcall.rb'
+require '../pwrcall.rb'
 
 class Hello
 	def hello(*p)
