@@ -2,7 +2,7 @@
 require 'eventmachine'
 require 'nacl'
 require 'bson'
-require File.dirname(__FILE__) + '/logger.rb'
+require File.dirname(__FILE__) + '/pwrlogger.rb'
 require File.dirname(__FILE__) + '/pwrunpackers.rb'
 
 module PwrConnectionHandlerPwrTLS
