@@ -3,6 +3,7 @@ require 'eventmachine'
 require 'fiber'
 require './pwrunpackers.rb'
 require './logger.rb'
+require './pwrtls.rb'
 
 class PwrResult
 	def initialize()
@@ -13,8 +14,22 @@ class PwrResult
 		Fiber.yield
 	end
 
+	def error()
+		return @error
+	end
+
+	def set_error(error=nil)
+		@error = true
+		resume(error)
+	end
+
 	def set(result=nil)
-		@fiber.resume(result) if @fiber.alive?
+		resume(result)
+	end
+
+	private
+	def resume(r)
+		@fiber.resume(r) if @fiber.alive?
 	end
 end
 
@@ -47,7 +62,13 @@ class PwrNode
 
 	def connect(server, port, packers=nil)
 		pwrconn = PwrConnection.new(self, packers)
-		plain = EventMachine::connect(server, port, PwrConnectionHandlerPlain, pwrconn)
+		EventMachine::connect(server, port, PwrConnectionHandlerPlain, pwrconn)
+		return Fiber.yield ? pwrconn : nil
+	end
+
+	def connect_pwrtls(server, port, packers=nil)
+		pwrconn = PwrConnection.new(self, packers)
+		EventMachine::connect(server, port, PwrConnectionHandlerPwrTLS, pwrconn)
 		return Fiber.yield ? pwrconn : nil
 	end
 
@@ -69,10 +90,10 @@ class PwrConnection
 
 	def initialize(node, packers=nil, server=false)
 		@node = node
-		@ready = false
-		@msgid = 0
 		@fiber = Fiber.current
 		@packers = packers || PwrUnpacker.unpackers.keys
+		@ready = false
+		@msgid = 0
 		@buf = ""
 		@server = server
 		@pending = {}
@@ -98,7 +119,7 @@ class PwrConnection
 	end
 
 	def receive_data(data)
-		$logger.debug("<< " + data.inspect)
+		$logger.debug("PwrCall<< " + data.inspect)
 
 		if !@ready
 			@buf << data
@@ -132,7 +153,7 @@ class PwrConnection
 
 	def unbind
 		if @ip
-			$logger.info("Connection with #{@ip}:#{@port} closed")
+			$logger.info("PwrCall connection with #{@ip}:#{@port} closed")
 		elsif !@server and @fiber.alive?
 			$logger.error("Connection failed")
 			@fiber.resume(false)
@@ -145,7 +166,7 @@ class PwrConnection
 
 	def connection_established()
 		@port, @ip = Socket.unpack_sockaddr_in(@connection_handler.get_peername)
-		$logger.info("Connection with #{@ip}:#{@port} established")
+		$logger.info("PwrCall connection with #{@ip}:#{@port} established")
 		send_hello()
 	end
 
@@ -178,7 +199,11 @@ class PwrConnection
 
 	def handle_response(msgid, error, result)
 		$logger.info("Incoming res.: <#{msgid}> #{[error, result].inspect}")
-		@pending[msgid].set(error ? error : result)
+		if error
+			@pending[msgid].set_error(error)
+		else
+			@pending[msgid].set(result)
+		end
 	end
 
 	def handle_unknown(opcode, msgid)
@@ -191,8 +216,8 @@ class PwrConnection
 	private
 
 	def send(data)
-		$logger.debug(">> " + data.inspect)
-		@connection_handler.send_data(data)
+		$logger.debug("PwrCall>> " + data.inspect)
+		@connection_handler.send(data)
 	end
 
 	def send_error(msgid, error)
@@ -225,14 +250,21 @@ module PwrConnectionHandlerPlain
 	end
 
 	def unbind()
-		@conn.unbind()
+		@conn.unbind() if @conn
+		$logger.info("Plain connection with #{@ip}:#{@port} closed") if @ip
 	end
 
-	def receive_data(*args)
-		@conn.receive_data(*args)
+	def receive_data(data)
+		@conn.receive_data(data)
 	end
 
 	def connection_completed(*args)
+		@port, @ip = Socket.unpack_sockaddr_in(get_peername)
+		$logger.info("Plain connection with #{@ip}:#{@port} established") if @ip
 		@conn.connection_completed(*args)
+	end
+
+	def send(data)
+		send_data(data)
 	end
 end
