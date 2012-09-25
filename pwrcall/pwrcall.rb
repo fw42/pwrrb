@@ -25,7 +25,7 @@ class PwrNode
 		EventMachine::start_server(server, port, PwrConnectionHandlerPlain) do |c|
 			pwrconn = PwrCallConnection.new(self, packers, true)
 			c.set_connection(pwrconn)
-			pwrconn.connection_completed
+			c.connection_completed
 			block.yield(pwrconn)
 		end
 		$logger.info("Listening on #{server}:#{port}")
