@@ -13,7 +13,8 @@ Pwr.run do
 	node = PwrNode.new()
 	node.register(Hello.new, "hello")
 
-	pwr = node.connect("localhost", 10001, ['bson'])
+#	pwr = node.connect_plain("localhost", 10001, ['bson'])
+	pwr = node.connect_psk("localhost", 10001, ['bson'])
 #	pwr = node.connect_ssl("localhost", 10001, ['bson'])
 #	pwr = node.connect_pwrtls("localhost", 10005, ['bson'])
 
@@ -21,7 +22,7 @@ Pwr.run do
 	exit unless pwr
 
 	# Sleep. This is "blocking".
-	pwr.call("foobar", "sleep", 2).result()
+	pwr.call("foobar", "sleep", 1).result()
 
 	# "Thread" 1
 	f1 = PwrFiber.new{
@@ -33,7 +34,7 @@ Pwr.run do
 
 	# "Thread" 2
 	f2 = PwrFiber.new{
-		pwr.call("foobar", "sleep", 5).result()
+		pwr.call("foobar", "sleep", 2).result()
 		puts "17 + 5 = #{pwr.call("foobar", "add", 17, 5).result()}"
 	}.resume()
 

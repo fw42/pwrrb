@@ -4,7 +4,7 @@ require 'colorize'
 
 if $logger == nil
 	$logger = Logger.new(STDOUT)
-	$logger.level = Logger::INFO
+#	$logger.level = Logger::INFO
 
 	$logger.formatter = proc do |severity, datetime, progname, msg|
 		level = severity[0,1]

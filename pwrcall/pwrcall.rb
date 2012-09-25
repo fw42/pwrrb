@@ -15,62 +15,53 @@ class PwrNode
 		@exports[ref]
 	end
 
-	###### Plain
-
-	def connect(server, port, packers=nil)
+	def connect(server, port, handler, packers=nil, *args)
 		pwrconn = PwrCallConnection.new(self, packers)
-		EventMachine::connect(server, port, PwrConnectionHandlerPlain, pwrconn)
-		pwrconn.send_hello()
+		EventMachine::connect(server, port, handler, pwrconn, *args)
 		return Fiber.yield ? pwrconn : nil
 	end
 
-	def listen(server, port, packers=nil, &block)
-		EventMachine::start_server(server, port, PwrConnectionHandlerPlain) do |c|
-			pwrconn = PwrCallConnection.new(self, packers, true)
-			c.set_connection(pwrconn)
-			c.connection_completed
-			pwrconn.send_hello()
-			block.yield(pwrconn)
-		end
-		$logger.info("Listening on #{server}:#{port}")
+	def connect_plain(server, port, packers=nil)
+		connect(server, port, PwrConnectionHandlerPlain, packers)
 	end
-
-	###### SSL
-
-	def connect_ssl(server, port, packers=nil, privkey, certchain)
-		pwrconn = PwrCallConnection.new(self, packers)
-		EventMachine::connect(server, port, PwrConnectionHandlerSSL, pwrconn, privkey, certchain)
-		pwrconn.send_hello()
-		return Fiber.yield ? pwrconn : nil
-	end
-
-	def listen_ssl(server, port, packers=nil, privkey, certchain, &block)
-		EventMachine::start_server(server, port, PwrConnectionHandlerSSL, nil, privkey, certchain) do |c|
-			pwrconn = PwrCallConnection.new(self, packers, true)
-			c.set_connection(pwrconn)
-			c.connection_completed
-			pwrconn.send_hello()
-			block.yield(pwrconn)
-		end
-		$logger.info("Listening on #{server}:#{port}")
-	end
-
-	###### PwrTLS
 
 	def connect_pwrtls(server, port, packers=nil)
-		pwrconn = PwrCallConnection.new(self, packers)
-		EventMachine::connect(server, port, PwrConnectionHandlerPwrTLS, pwrconn)
-		return Fiber.yield ? pwrconn : nil
+		connect(server, port, PwrConnectionHandlerPwrTLS, packers)
+	end
+
+	def connect_psk(server, port, packers=nil)
+		connect(server, port, PwrConnectionHandlerPSK, packers)
+	end
+
+	def connect_ssl(server, port, packers=nil, privkey, certchain)
+		connect(server, port, PwrConnectionHandlerSSL, packers, privkey, certchain)
+	end
+
+	def listen(server, port, handler, packers=nil, *args, &block)
+		EventMachine::start_server(server, port, handler) do |c|
+			pwrconn = PwrCallConnection.new(self, packers, true)
+			c.set_connection(pwrconn)
+			pwrconn.connection_established()
+			block.yield(pwrconn)
+		end
+		$logger.info("Listening on #{server}:#{port}")
+	end
+
+	def listen_plain(server, port, packers=nil, handler, &block)
+		listen(server, port, PwrConnectionHandlerPlain, packers, &block)
 	end
 
 	def listen_pwrtls(server, port, packers=nil, &block)
 		# TODO
 	end
 
-	###### PwrPSK
+	def listen_psk(server, port, packers=nil, &block)
+		listen(server, port, PwrConnectionHandlerPSK, packers, &block)
+	end
 
-	# TODO
-
+	def listen_ssl(server, port, packers=nil, privkey, certchain, &block)
+		listen(server, port, PwrConnectionHandlerSSL, packers, privkey, certchain, &block)
+	end
 end
 
 class PwrResult
@@ -144,16 +135,17 @@ class PwrCallConnection < PwrConnection
 		return @pending[@msgid-1]
 	end
 
-	def send_hello
-		send("pwrcall %s - caps: %s\n" % [ VERSION, @packers.join(",") ])
-	end
-
 	######
 
 	public
 
-	def connection_completed
+	def connection_established()
 		@port, @ip = Socket.unpack_sockaddr_in(@connection_handler.get_peername)
+		send_hello()
+	end
+
+	def connection_completed()
+		connection_established()
 	end
 
 	def receive_data(data)
@@ -266,6 +258,10 @@ class PwrCallConnection < PwrConnection
 	def send_response(msgid, result)
 		$logger.info("Outgoing res.: <#{msgid}> #{result.inspect}")
 		send(@packer.pack([ OP[:response], msgid, nil, result ]))
+	end
+
+	def send_hello
+		send("pwrcall %s - caps: %s\n" % [ VERSION, @packers.join(",") ])
 	end
 end
 
