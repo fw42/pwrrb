@@ -5,10 +5,7 @@ require File.dirname(__FILE__) + '/../pwrtls.rb'
 
 begin
 	EventMachine::run {
-		Fiber.new{
-			pwr = PwrTLS::connect("localhost", 10003, ChatExample.new)
-			puts pwr.inspect
-		}.resume
+		pwr = PwrTLS::listen("localhost", 10003, ChatExample.new) {}
 	}
 rescue Interrupt
 	puts "Exiting."

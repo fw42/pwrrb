@@ -1,17 +1,15 @@
 #!/usr/bin/env/ruby
-require 'eventmachine'
+require File.dirname(__FILE__) + '/../pwr.rb'
 require 'nacl'
 require 'bson'
-require File.dirname(__FILE__) + '/../pwrtools/pwrlogger.rb'
-require File.dirname(__FILE__) + '/../pwrtools/pwrunpackers.rb'
 
 class PwrTLS
-	def self.connect(conn, server, port)
+	def self.connect(server, port, conn)
 		EventMachine::connect(server, port, PwrConnectionHandlerPwrTLS, conn)
 		return Fiber.yield ? conn : nil
 	end
 
-	def self.listen(conn, server, port, &block)
+	def self.listen(server, port, conn, &block)
 		# TODO
 	end
 end

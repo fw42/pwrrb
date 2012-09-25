@@ -1,9 +1,5 @@
 #!/usr/bin/env ruby
-require 'eventmachine'
-require 'fiber'
-require File.dirname(__FILE__) + '/../pwrtools/pwrconnection.rb'
-require File.dirname(__FILE__) + '/../pwrtools/pwrunpackers.rb'
-require File.dirname(__FILE__) + '/../pwrtools/pwrlogger.rb'
+require File.dirname(__FILE__) + '/../pwr.rb'
 require File.dirname(__FILE__) + '/../pwrtls/pwrtls.rb'
 
 class PwrNode
@@ -259,7 +255,7 @@ module PwrConnectionHandlerPlain
 
 	def unbind()
 		@conn.unbind() if @conn
-		$logger.info("Plain connection with #{@ip}:#{@port} closed") if @ip
+		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} closed") if @peer
 	end
 
 	def receive_data(data)
@@ -267,8 +263,8 @@ module PwrConnectionHandlerPlain
 	end
 
 	def connection_completed(*args)
-		@port, @ip = Socket.unpack_sockaddr_in(get_peername)
-		$logger.info("Plain connection with #{@ip}:#{@port} established") if @ip
+		@peer = Socket.unpack_sockaddr_in(get_peername)
+		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} established") if @peer
 		@conn.connection_completed(*args)
 	end
 

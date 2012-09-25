@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-require 'eventmachine'
 require File.dirname(__FILE__) + '/../pwrcall.rb'
 
 class Stuff
@@ -14,14 +13,8 @@ class Stuff
 	end
 end
 
-begin
-	EventMachine::run do
-		Fiber.new{
-			node = PwrNode.new()
-			node.register(Stuff.new, "foobar")
-			node.listen("0.0.0.0", 10001, ['bson', 'json']) {}
-		}.resume
-	end
-rescue Interrupt
-	puts "Exiting."
+Pwr.run do
+	node = PwrNode.new()
+	node.register(Stuff.new, "foobar")
+	node.listen("0.0.0.0", 10001, ['bson', 'json']) {}
 end
