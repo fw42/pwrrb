@@ -16,4 +16,5 @@ Pwr.run do
 	node = PwrNode.new()
 	node.register(Stuff.new, "foobar")
 	node.listen("0.0.0.0", 10001, ['bson', 'json']) {}
+#	node.listen_ssl("0.0.0.0", 10001, ['bson', 'json']) {}
 end
