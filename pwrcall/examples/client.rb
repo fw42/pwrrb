@@ -39,6 +39,6 @@ Pwr.run do
 	# Wait for Fibers to finish
 	f1.wait()
 	f2.wait()
-	EventMachine::stop_event_loop
+	Pwr.stop
 
 end

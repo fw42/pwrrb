@@ -15,4 +15,14 @@ class Pwr
 			$logger.info("Exiting.")
 		end
 	end
+
+	def self.stop
+		EventMachine::stop_event_loop
+	end
+
+	def self.sleep(n)
+		f = Fiber.current
+		EventMachine::Timer.new(n) do f.resume end
+		Fiber.yield
+	end
 end

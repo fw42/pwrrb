@@ -5,12 +5,6 @@ class Stuff
 	def add(a,b)
 		a+b
 	end
-
-	def sleep(n)
-		f = Fiber.current
-		EventMachine::Timer.new(n) do f.resume end
-		Fiber.yield
-	end
 end
 
 Pwr.run do
