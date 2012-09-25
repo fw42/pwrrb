@@ -14,6 +14,7 @@ TODO
   * implement "generate new key and save to file" function
 * psk
   * fix nonce stuff
+  * handshake with session key generation
 * pwrtools
   * getopt
   * logger
