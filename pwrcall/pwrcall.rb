@@ -15,9 +15,9 @@ class PwrNode
 		@exports[ref]
 	end
 
-	def connect(server, port, handler, packers=nil, *args)
+	def connect(server, port, handler, packers=nil)
 		pwrconn = PwrCallConnection.new(self, packers)
-		EventMachine::connect(server, port, handler, pwrconn, *args)
+		EventMachine::connect(server, port, handler, pwrconn)
 		return Fiber.yield ? pwrconn : nil
 	end
 
@@ -29,7 +29,7 @@ class PwrNode
 		connect(server, port, PwrConnectionHandlerPwrTLS, packers)
 	end
 
-	def listen(server, port, handler, packers=nil, *args, &block)
+	def listen(server, port, handler, packers=nil, &block)
 		EventMachine::start_server(server, port, handler) do |c|
 			pwrconn = PwrCallConnection.new(self, packers, true)
 			c.set_connection(pwrconn)
@@ -101,6 +101,8 @@ end
 class PwrCallConnection < PwrConnection
 	OP = { request: 0, response: 1, notify: 2 }
 	VERSION = "pwrcallrb_v0.1"
+
+	attr_reader :server
 
 	public
 

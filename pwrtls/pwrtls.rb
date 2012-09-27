@@ -19,7 +19,9 @@ module PwrConnectionHandlerPwrTLS
 		set_connection(conn)
 		@packer = PwrBSON.new()
 		@buf = ""
+		@state = :new
 		@peer = { snonce: 0 }
+		@server = (conn == nil)
 
 		### Short-term keypair and fresh nonce
 		@me = { snonce: 1 }
@@ -109,7 +111,11 @@ module PwrConnectionHandlerPwrTLS
 			packet = @packer.unpack(packet)
 		end
 
-		if @state == :client_hello_sent
+		if @server and @state == :new
+
+			
+
+		elsif !@server and @state == :client_hello_sent
 
 			if !packet['lpub'] or !packet['box']
 				$logger.error("Received SERVER HELLO without lpub or box")
@@ -117,16 +123,8 @@ module PwrConnectionHandlerPwrTLS
 			end
 
 			@peer[:lpk] = packet['lpub'].to_s
-
-			begin
-				payload = @packer.unpack(
-					NaCl.crypto_box_open(packet['box'].to_s, snonce_peer_next(), @peer[:lpk], @me[:ssk])
-				)
-				@peer[:spk] = payload['spub'].to_s
-			rescue NaCl::OpenError
-				$logger.error("Decryption error!")
-				# TODO: disconect
-			end
+			payload = @packer.unpack(decrypt(packet['box'].to_s, snonce_peer_next(), @peer[:lpk], @me[:ssk]))
+			@peer[:spk] = payload['spub'].to_s
 
 			$logger.info("Received SERVER HELLO from #{@peer[:ip]}:#{@peer[:port]}")
 			send_client_verify()
@@ -138,13 +136,21 @@ module PwrConnectionHandlerPwrTLS
 			@conn.connection_established()
 
 		elsif @state == :ready
-			begin
-				payload = NaCl.crypto_box_open(packet, snonce_peer_next(), @peer[:spk], @me[:ssk])
-				@conn.receive_data(payload)
-			rescue NaCl::OpenError
-				$logger.error("Decryption error!")
-				# TODO: disconnect
-			end
+			@conn.receive_data(decrypt(packet, snonce_peer_next(), @peer[:spk], @me[:ssk]))
+		else
+			$logger.warn("Received unexpected packet!")
+			return
+		end
+	end
+
+	######
+
+	def decrypt(ciphertext, nonce, pk, sk)
+		begin
+			return NaCl.crypto_box_open(ciphertext, nonce, pk, sk)
+		rescue NaCl::OpenError
+			$logger.error("Decryption error!")
+			# TODO: disconect
 		end
 	end
 
