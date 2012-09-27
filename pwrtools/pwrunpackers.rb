@@ -91,7 +91,7 @@ class PwrBSON < PwrUnpacker
 			end
 			return data
 		rescue TypeError
-			$logger.warn("BSON error: Failed to parse #{blob.inspect}")
+			$logger.warn("BSON error: Failed to parse #{data.inspect}")
 		end
 		return nil
 	end

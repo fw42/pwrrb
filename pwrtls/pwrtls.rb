@@ -20,11 +20,19 @@ module PwrConnectionHandlerPwrTLS
 		@packer = PwrBSON.new()
 		@buf = ""
 		@state = :new
-		@peer = { snonce: 0 }
-		@server = (conn == nil)
+		@peer = {}
+		@me = {}
 
-		### Short-term keypair and fresh nonce
-		@me = { snonce: 1 }
+		### Client sends the first message
+		if @server = (conn == nil)
+			@peer[:snonce] = 1
+			@me[:snonce] = 0
+		else
+			@peer[:snonce] = 0
+			@me[:snonce] = 1
+		end
+
+		### Short-term keypair
 		@me[:spk], @me[:ssk] = NaCl.crypto_box_keypair()
 
 		### TODO: load this from file
@@ -42,7 +50,7 @@ module PwrConnectionHandlerPwrTLS
 	end
 
 	def send(data)
-		send_framed(NaCl.crypto_box(data, snonce_my_next(), @peer[:spk], @me[:ssk]))
+		send_encrypted(data)
 	end
 
 	######
@@ -73,6 +81,7 @@ module PwrConnectionHandlerPwrTLS
 	def connection_completed()
 		print_connected_msg()
 		send_client_hello()
+		@state = :client_hello_sent
 	end
 
 	def server_accepted()
@@ -107,50 +116,51 @@ module PwrConnectionHandlerPwrTLS
 	end
 
 	def handle_packet(packet)
-		if @state != :ready
-			packet = @packer.unpack(packet)
-		end
-
+		packet = @packer.unpack(packet) unless @state == :ready
 		if @server and @state == :new
-
-			
-
-		elsif !@server and @state == :client_hello_sent
-
-			if !packet['lpub'] or !packet['box']
-				$logger.error("Received SERVER HELLO without lpub or box")
+			if !packet['spub']
+				$logger.error("Received invalid CLIENT HELLO")
 				return
 			end
-
-			@peer[:lpk] = packet['lpub'].to_s
-			payload = @packer.unpack(decrypt(packet['box'].to_s, snonce_peer_next(), @peer[:lpk], @me[:ssk]))
-			@peer[:spk] = payload['spub'].to_s
-
+			@peer[:spk] = packet['spub']
+			$logger.info("Received CLIENT HELLO from #{@peer[:ip]}:#{@peer[:port]}")
+			send_server_hello()
+			@state = :server_hello_sent
+		elsif @server and @state == :server_hello_sent
+			if !packet['box'] then
+				$logger.error("Received invalid CLIENT VERIFY")
+				return
+			end
+			payload = @packer.unpack(decrypt(packet['box'], snonce_peer_next(), @peer[:spk], @me[:ssk]))
+			if !payload['lpub'] or !payload['v'] or !payload['vn']
+				$logger.error("Received invalid CLIENT VERIFY")
+				return
+			end
+			@peer[:lpk] = payload['lpub']
+			@peer[:spk] = decrypt(payload['v'], payload['vn'], @peer[:lpk], @me[:lsk])
+			$logger.info("Received CLIENT VERIFY from #{@peer[:ip]}:#{@peer[:port]}")
+			$logger.error("TODO: verification!") # TODO: verification
+			handshake_complete()
+		elsif !@server and @state == :client_hello_sent
+			if !packet['lpub'] or !packet['box']
+				$logger.error("Received incomplete SERVER HELLO")
+				return
+			end
+			@peer[:lpk] = packet['lpub']
+			payload = @packer.unpack(decrypt(packet['box'], snonce_peer_next(), @peer[:lpk], @me[:ssk]))
+			if !payload['spub']
+				$logger.error("Received invalid SERVER HELLO")
+				return
+			end
+			@peer[:spk] = payload['spub']
 			$logger.info("Received SERVER HELLO from #{@peer[:ip]}:#{@peer[:port]}")
 			send_client_verify()
-			$logger.info("Handshake with #{@peer[:ip]}:#{@peer[:port]} complete")
-
-			@state = :ready
-			$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} established")
-
-			@conn.connection_established()
-
+			handshake_complete()
 		elsif @state == :ready
 			@conn.receive_data(decrypt(packet, snonce_peer_next(), @peer[:spk], @me[:ssk]))
 		else
-			$logger.warn("Received unexpected packet!")
+			$logger.warn("Received unexpected packet in state #{@state}")
 			return
-		end
-	end
-
-	######
-
-	def decrypt(ciphertext, nonce, pk, sk)
-		begin
-			return NaCl.crypto_box_open(ciphertext, nonce, pk, sk)
-		rescue NaCl::OpenError
-			$logger.error("Decryption error!")
-			# TODO: disconect
 		end
 	end
 
@@ -158,21 +168,62 @@ module PwrConnectionHandlerPwrTLS
 
 	private
 
+	def decrypt(ciphertext, nonce, pk, sk)
+		begin
+			return NaCl.crypto_box_open(ciphertext, nonce, pk, sk)
+		rescue NaCl::OpenError
+			$logger.error("Decryption error!")
+			unbind()
+		end
+	end
+
+	def encrypt(plaintext, nonce, pk, sk)
+		NaCl.crypto_box(plaintext, nonce, pk, sk)
+	end
+
+	def handshake_complete()
+		$logger.info("Handshake with #{@peer[:ip]}:#{@peer[:port]} complete")
+		@state = :ready
+		$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} established")
+		@conn.connection_established()
+	end
+
+	######
+
+	private
+
+	def send_encrypted(data)
+		send_framed(encrypt(data, snonce_my_next(), @peer[:spk], @me[:ssk]))
+	end
+
+	def send_unencrypted(data)
+		send_framed(data)
+	end
+
+	def send_server_hello()
+		send_unencrypted(@packer.pack_binary({
+			lpub: @me[:lpk],
+			box: encrypt(
+				@packer.pack_binary({ spub: @me[:spk] }),
+				snonce_my_next(), @peer[:spk], @me[:lsk]
+			)
+		}))
+		$logger.info("Sent SERVER HELLO to #{@peer[:ip]}:#{@peer[:port]}")
+	end
+
 	def send_client_hello()
-		send_framed(@packer.pack_binary({ spub: @me[:spk] }))
+		send_unencrypted(@packer.pack_binary({ spub: @me[:spk] }))
 		$logger.info("Sent CLIENT HELLO to #{@peer[:ip]}:#{@peer[:port]}")
-		@state = :client_hello_sent
 	end
 
 	def send_client_verify()
 		vn = lnonce(@me[:lnonce])
-		vbox = NaCl.crypto_box(@me[:spk], vn, @peer[:lpk], @me[:lsk])
-		verifybox = NaCl.crypto_box(
-			@packer.pack_binary({ lpub: @me[:lpk], v: vbox, vn: vn }).to_s,
-			snonce_my_next(), @peer[:spk], @me[:ssk]
-		)
+		send_unencrypted(@packer.pack_binary({
+			box: encrypt(@packer.pack_binary({
+				lpub: @me[:lpk], v: encrypt(@me[:spk], vn, @peer[:lpk], @me[:lsk]), vn: vn
+			}), snonce_my_next(), @peer[:spk], @me[:ssk])
+		}))
 		$logger.info("Sent CLIENT VERIFY to #{@peer[:ip]}:#{@peer[:port]}")
-		send_framed(verifybox)
 	end
 
 	def send_framed(data)

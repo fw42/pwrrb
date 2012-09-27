@@ -180,7 +180,8 @@ class PwrCallConnection < PwrConnection
 	def unbind()
 		if @peer and @ready
 			$logger.info("PwrCall connection with #{@peer[1]}:#{@peer[0]} closed")
-		elsif !@server and @fiber.alive?
+		end
+		if !@server and !@peer and @fiber.alive?
 			$logger.error("Connection failed")
 			@fiber.resume(false)
 		end
