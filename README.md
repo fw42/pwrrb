@@ -1,11 +1,11 @@
-pwrcall and pwrtls
-==================
+pwrrb: pwrcall and pwrtls for Ruby
+==================================
 
 TODO
 ----
 * pwrcall
   * proxy support
-  * pwr:// URL parser
+  * pwrcall:// URL parser
 * pwrtls
   * verify all crypto boxes and keys
   * read own key from file
