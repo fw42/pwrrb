@@ -114,7 +114,7 @@ class PwrCallConnection < PwrConnection
 		@buf = ""
 		@server = server
 		@pending = {}
-		super
+		super()
 	end
 
 	######
