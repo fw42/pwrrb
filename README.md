@@ -5,16 +5,13 @@ TODO
 ----
 * clean up everything, clean up API, ...
 * pwrcall
-  * SSL support, move SSL code to pwrtls.rb
   * proxy support
+  * pwr:// URL parser
 * pwrtls
   * server side code
   * verify all crypto boxes and keys
   * read own key from file
   * implement "generate new key and save to file" function
-* psk
-  * fix nonce stuff
-  * handshake with session key generation
 * pwrtools
   * getopt
   * logger

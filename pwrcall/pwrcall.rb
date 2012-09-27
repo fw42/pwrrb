@@ -29,14 +29,6 @@ class PwrNode
 		connect(server, port, PwrConnectionHandlerPwrTLS, packers)
 	end
 
-	def connect_psk(server, port, packers=nil)
-		connect(server, port, PwrConnectionHandlerPSK, packers)
-	end
-
-	def connect_ssl(server, port, packers=nil, privkey, certchain)
-		connect(server, port, PwrConnectionHandlerSSL, packers, privkey, certchain)
-	end
-
 	def listen(server, port, handler, packers=nil, *args, &block)
 		EventMachine::start_server(server, port, handler) do |c|
 			pwrconn = PwrCallConnection.new(self, packers, true)
@@ -53,14 +45,6 @@ class PwrNode
 
 	def listen_pwrtls(server, port, packers=nil, &block)
 		# TODO
-	end
-
-	def listen_psk(server, port, packers=nil, &block)
-		listen(server, port, PwrConnectionHandlerPSK, packers, &block)
-	end
-
-	def listen_ssl(server, port, packers=nil, privkey, certchain, &block)
-		listen(server, port, PwrConnectionHandlerSSL, packers, privkey, certchain, &block)
 	end
 end
 
@@ -287,49 +271,6 @@ module PwrConnectionHandlerPlain
 	def connection_completed(*args)
 		@peer = Socket.unpack_sockaddr_in(get_peername)
 		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} established") if @peer
-		@conn.connection_completed(*args)
-	end
-
-	def send(data)
-		send_data(data)
-	end
-end
-
-module PwrConnectionHandlerSSL
-	def initialize(conn=nil, privkey, certchain)
-		set_connection(conn)
-		@privkey = privkey
-		@certchain = certchain
-	end
-
-	def set_connection(conn)
-		@conn = conn
-		@conn.set_connection_handler(self) if conn
-	end
-
-	def unbind()
-		@conn.unbind() if @conn
-		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} closed") if @peer
-	end
-
-	def receive_data(data)
-		@conn.receive_data(data)
-	end
-
-	def ssl_handshake_completed()
-		$logger.info("SSL handshake completed")
-		puts get_peer_cert
-	end
-
-	def ssl_verify_peer(*args)
-		$logger.error("SSL verify peer called. What to do!?")
-		# TODO
-	end
-
-	def connection_completed(*args)
-		@peer = Socket.unpack_sockaddr_in(get_peername)
-		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} established") if @peer
-		start_tls(:private_key_file => @privkey, :cert_chain_file => @certchain, :verify_peer => true)
 		@conn.connection_completed(*args)
 	end
 
