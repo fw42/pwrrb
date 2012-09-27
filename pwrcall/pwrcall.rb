@@ -33,7 +33,7 @@ class PwrNode
 		EventMachine::start_server(server, port, handler) do |c|
 			pwrconn = PwrCallConnection.new(self, packers, true)
 			c.set_connection(pwrconn)
-			c.connection_established()
+			c.server_accepted()
 			block.yield(pwrconn)
 		end
 		$logger.info("Listening on #{server}:#{port}")
@@ -95,6 +95,9 @@ class PwrFiber < Fiber
 	end
 end
 
+class PwrException
+end
+
 class PwrCallConnection < PwrConnection
 	OP = { request: 0, response: 1, notify: 2 }
 	VERSION = "pwrcallrb_v0.1"
@@ -117,6 +120,7 @@ class PwrCallConnection < PwrConnection
 	public
 
 	def call(ref, fn, *params)
+		throw :connection_not_ready unless @ready
 		@pending[@msgid] = PwrResult.new()
 		send_request(@msgid, ref, fn, *params)
 		@msgid += 1
@@ -128,7 +132,7 @@ class PwrCallConnection < PwrConnection
 	public
 
 	def connection_established()
-		@port, @ip = Socket.unpack_sockaddr_in(@connection_handler.get_peername)
+		@peer = Socket.unpack_sockaddr_in(@connection_handler.get_peername)
 		send_hello()
 	end
 
@@ -147,8 +151,8 @@ class PwrCallConnection < PwrConnection
 			if hello = /^pwrcall ([^\s]*) - caps: (.*)$/.match(line)
 				hello[2].split(",").map{ |cap| cap.strip }.each do |cap|
 					next unless @packers.include?(cap) and PwrUnpacker.unpackers[cap]
-					$logger.debug("Handshake with #{@ip}:#{@port} completed. Using #{cap} packer.")
-					$logger.info("PwrCall connection with #{@ip}:#{@port} established")
+					$logger.debug("Handshake with #{@peer[1]}:#{@peer[0]} completed. Using #{cap} packer.")
+					$logger.info("PwrCall connection with #{@peer[1]}:#{@peer[0]} established")
 					@ready = true
 					@packer = PwrUnpacker.unpackers[cap].new()
 					@fiber.resume(true) unless @server
@@ -171,16 +175,16 @@ class PwrCallConnection < PwrConnection
 		end
 	end
 
-	def connection_completed()
-		connection_established()
-	end
-
-	def unbind
-		if @ip and @ready
-			$logger.info("PwrCall connection with #{@ip}:#{@port} closed")
+	def unbind()
+		if @peer and @ready
+			$logger.info("PwrCall connection with #{@peer[1]}:#{@peer[0]} closed")
 		elsif !@server and @fiber.alive?
 			$logger.error("Connection failed")
 			@fiber.resume(false)
+		end
+		@ready = false
+		@pending.keys.each do |k|
+			@pending[k].set_error("Connection lost")
 		end
 	end
 
@@ -252,7 +256,7 @@ class PwrCallConnection < PwrConnection
 		send(@packer.pack([ OP[:response], msgid, nil, result ]))
 	end
 
-	def send_hello
+	def send_hello()
 		send("pwrcall %s - caps: %s\n" % [ VERSION, @packers.join(",") ])
 	end
 end
@@ -261,6 +265,10 @@ module PwrConnectionHandlerPlain
 	def initialize(conn=nil)
 		set_connection(conn)
 	end
+
+	###### Interface to PwrConnection
+
+	public
 
 	def set_connection(conn)
 		@conn = conn
@@ -271,20 +279,31 @@ module PwrConnectionHandlerPlain
 		send_data(data)
 	end
 
-	def connection_established()
+	######
+
+	private
+
+	def print_connected_msg()
 		@peer = Socket.unpack_sockaddr_in(get_peername)
 		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} established") if @peer
-		@conn.connection_established()
 	end
 
 	###### Callbacks
+
+	public
 
 	def receive_data(data)
 		@conn.receive_data(data)
 	end
 
 	def connection_completed()
-		connection_established()
+		print_connected_msg()
+		@conn.connection_established()
+	end
+
+	def server_accepted()
+		print_connected_msg()
+		@conn.connection_established()
 	end
 
 	def unbind()

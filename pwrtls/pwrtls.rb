@@ -39,13 +39,17 @@ module PwrConnectionHandlerPwrTLS
 		@conn.set_connection_handler(self) if conn
 	end
 
-	def connection_established
-		@peer[:port], @peer[:ip] = Socket.unpack_sockaddr_in(get_peername)
-		$logger.info("TCP connection with #{@peer[:ip]}:#{@peer[:port]} established")
-	end
-
 	def send(data)
 		send_framed(NaCl.crypto_box(data, snonce_my_next(), @peer[:spk], @me[:ssk]))
+	end
+
+	######
+
+	private
+
+	def print_connected_msg()
+		@peer[:port], @peer[:ip] = Socket.unpack_sockaddr_in(get_peername)
+		$logger.info("TCP connection with #{@peer[:ip]}:#{@peer[:port]} established")
 	end
 
 	###### Callbacks
@@ -64,13 +68,17 @@ module PwrConnectionHandlerPwrTLS
 		end
 	end
 
-	def connection_completed
-		connection_established()
+	def connection_completed()
+		print_connected_msg()
 		send_client_hello()
 	end
 
-	def unbind
-		@conn.unbind
+	def server_accepted()
+		print_connected_msg()
+	end
+
+	def unbind()
+		@conn.unbind()
 		$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} closed") if @peer[:ip]
 	end
 
@@ -127,7 +135,7 @@ module PwrConnectionHandlerPwrTLS
 			@state = :ready
 			$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} established")
 
-			@conn.connection_completed()
+			@conn.connection_established()
 
 		elsif @state == :ready
 			begin
