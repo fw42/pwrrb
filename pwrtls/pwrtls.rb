@@ -1,7 +1,6 @@
 #!/usr/bin/env/ruby
 require File.dirname(__FILE__) + '/../pwr.rb'
 require 'nacl'
-require 'bson'
 
 class PwrTLS
 	def self.connect(server, port, conn)
