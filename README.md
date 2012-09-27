@@ -5,7 +5,7 @@ pwrrb: pwrcall and pwrtls for Ruby
 [remote procedure call system (RPC)](https://en.wikipedia.org/wiki/Remote_procedure_call)
 with integrated
 [capability-based security](https://en.wikipedia.org/wiki/Capability-based_security),
-started by [Mark Schlösser](https://github.com/rep/).
+started by [Mark Schloesser](https://github.com/rep/).
 [pwrtls](https://github.com/rep/ptls) is an encrypted and authenticated transport layer
 between TCP and pwrcall, based on ideas from
 [Daniel Bernstein's](http://cr.yp.to/djb.html)
