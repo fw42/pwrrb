@@ -108,13 +108,13 @@ class PwrCallConnection < PwrConnection
 
 	def initialize(node, packers=nil, server=false)
 		@node = node
-		@fiber = Fiber.current
 		@packers = packers || PwrUnpacker.unpackers.keys
 		@ready = false
 		@msgid = 0
 		@buf = ""
 		@server = server
 		@pending = {}
+		super
 	end
 
 	######

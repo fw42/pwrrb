@@ -9,8 +9,14 @@ class PwrTLS
 		return Fiber.yield ? conn : nil
 	end
 
-	def self.listen(server, port, conn, &block)
-		# TODO
+	def self.listen(server, port, connclass, &block)
+		EventMachine::start_server(server, port, PwrConnectionHandlerPwrTLS) do |c|
+			conn = connclass.new()
+			c.set_connection(conn)
+			c.server_accepted()
+			block.yield(connclass)
+		end
+		$logger.info("Listening on #{server}:#{port}")
 	end
 end
 
