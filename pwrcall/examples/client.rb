@@ -13,9 +13,7 @@ Pwr.run do
 	node = PwrNode.new()
 	node.register(Hello.new, "hello")
 
-#	pwr = node.connect_plain("localhost", 10001, ['bson'])
-	pwr = node.connect_psk("localhost", 10001, ['bson'])
-#	pwr = node.connect_ssl("localhost", 10001, ['bson'])
+	pwr = node.connect_plain("localhost", 10001, ['bson'])
 #	pwr = node.connect_pwrtls("localhost", 10005, ['bson'])
 
 	# Check if connection failed
