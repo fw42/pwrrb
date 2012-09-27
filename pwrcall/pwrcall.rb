@@ -33,7 +33,7 @@ class PwrNode
 		EventMachine::start_server(server, port, handler) do |c|
 			pwrconn = PwrCallConnection.new(self, packers, true)
 			c.set_connection(pwrconn)
-			pwrconn.connection_established()
+			c.connection_established()
 			block.yield(pwrconn)
 		end
 		$logger.info("Listening on #{server}:#{port}")
@@ -271,16 +271,20 @@ module PwrConnectionHandlerPlain
 		send_data(data)
 	end
 
+	def connection_established()
+		@peer = Socket.unpack_sockaddr_in(get_peername)
+		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} established") if @peer
+		@conn.connection_established()
+	end
+
 	###### Callbacks
 
 	def receive_data(data)
 		@conn.receive_data(data)
 	end
 
-	def connection_completed(*args)
-		@peer = Socket.unpack_sockaddr_in(get_peername)
-		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} established") if @peer
-		@conn.connection_completed(*args)
+	def connection_completed()
+		connection_established()
 	end
 
 	def unbind()
