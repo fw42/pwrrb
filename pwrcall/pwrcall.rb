@@ -44,7 +44,7 @@ class PwrNode
 	end
 
 	def listen_pwrtls(server, port, packers=nil, &block)
-		# TODO
+		listen(server, port, PwrConnectionHandlerPwrTLS, packers, &block)
 	end
 end
 
@@ -112,6 +112,10 @@ class PwrCallConnection < PwrConnection
 		@pending = {}
 	end
 
+	######
+
+	public
+
 	def call(ref, fn, *params)
 		@pending[@msgid] = PwrResult.new()
 		send_request(@msgid, ref, fn, *params)
@@ -128,9 +132,9 @@ class PwrCallConnection < PwrConnection
 		send_hello()
 	end
 
-	def connection_completed()
-		connection_established()
-	end
+	###### Callbacks
+
+	public
 
 	def receive_data(data)
 		$logger.debug("PwrCall<< " + data.inspect)
@@ -165,6 +169,10 @@ class PwrCallConnection < PwrConnection
 			end
 			return
 		end
+	end
+
+	def connection_completed()
+		connection_established()
 	end
 
 	def unbind
@@ -259,10 +267,11 @@ module PwrConnectionHandlerPlain
 		@conn.set_connection_handler(self) if conn
 	end
 
-	def unbind()
-		@conn.unbind() if @conn
-		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} closed") if @peer
+	def send(data)
+		send_data(data)
 	end
+
+	###### Callbacks
 
 	def receive_data(data)
 		@conn.receive_data(data)
@@ -274,7 +283,8 @@ module PwrConnectionHandlerPlain
 		@conn.connection_completed(*args)
 	end
 
-	def send(data)
-		send_data(data)
+	def unbind()
+		@conn.unbind() if @conn
+		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} closed") if @peer
 	end
 end

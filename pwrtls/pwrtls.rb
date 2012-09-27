@@ -16,42 +16,41 @@ end
 
 module PwrConnectionHandlerPwrTLS
 	def initialize(conn=nil)
-		@peer = { snonce: 0 }
-		@me = { snonce: 1 }
-		@me[:spk], @me[:ssk] = NaCl.crypto_box_keypair()
+		set_connection(conn)
 		@packer = PwrBSON.new()
 		@buf = ""
+		@peer = { snonce: 0 }
 
-		set_connection(conn)
+		### Short-term keypair and fresh nonce
+		@me = { snonce: 1 }
+		@me[:spk], @me[:ssk] = NaCl.crypto_box_keypair()
 
-		if false # TODO
-			@me[:lpk] = my_state['pubkey']
-			@me[:lsk] = my_state['privkey']
-			@me[:lnonce] = my_state['nonce']
-		else
-			init_new_state()
-		end
+		### TODO: load this from file
+		@me[:lpk], @me[:lsk] = NaCl.crypto_box_keypair()
+		@me[:lnonce] = 1
 	end
+
+	###### Interface to PwrConnection
+
+	public
 
 	def set_connection(conn)
 		@conn = conn
 		@conn.set_connection_handler(self) if conn
 	end
 
-	def connection_completed
-		connection_established()
-		send_client_hello()
+	def connection_established
+		@peer[:port], @peer[:ip] = Socket.unpack_sockaddr_in(get_peername)
+		$logger.info("TCP connection with #{@peer[:ip]}:#{@peer[:port]} established")
 	end
 
-	def unbind
-		@conn.unbind
-		$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} closed") if @peer[:ip]
+	def send(data)
+		send_framed(NaCl.crypto_box(data, snonce_my_next(), @peer[:spk], @me[:ssk]))
 	end
 
-	def init_new_state()
-		@me[:lpk], @me[:lsk] = NaCl.crypto_box_keypair()
-		@me[:lnonce] = 1
-	end
+	###### Callbacks
+
+	public
 
 	def receive_data(data)
 		$logger.debug("PwrTLS<< " + data.inspect)
@@ -65,14 +64,37 @@ module PwrConnectionHandlerPwrTLS
 		end
 	end
 
-	def connection_established
-		@peer[:port], @peer[:ip] = Socket.unpack_sockaddr_in(get_peername)
-		$logger.info("TCP connection with #{@peer[:ip]}:#{@peer[:port]} established")
+	def connection_completed
+		connection_established()
+		send_client_hello()
+	end
+
+	def unbind
+		@conn.unbind
+		$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} closed") if @peer[:ip]
 	end
 
 	######
 
 	private
+
+	def snonce_my_next()
+		@me[:snonce] += 2
+		return snonce(@me[:snonce])
+	end
+
+	def snonce_peer_next()
+		@peer[:snonce] += 2
+		return snonce(@peer[:snonce])
+	end
+
+	def snonce(num)
+		"pwrnonceshortXXX" + [ num ].pack("Q")
+	end
+
+	def lnonce(num)
+		"pwrnonce" + [ num, 2**47 + rand(2**47) ].pack("QQ")
+	end
 
 	def handle_packet(packet)
 		if @state != :ready
@@ -119,34 +141,6 @@ module PwrConnectionHandlerPwrTLS
 	end
 
 	######
-
-	private
-
-	def snonce_my_next()
-		@me[:snonce] += 2
-		return snonce(@me[:snonce])
-	end
-
-	def snonce_peer_next()
-		@peer[:snonce] += 2
-		return snonce(@peer[:snonce])
-	end
-
-	def snonce(num)
-		"pwrnonceshortXXX" + [ num ].pack("Q")
-	end
-
-	def lnonce(num)
-		"pwrnonce" + [ num, 2**47 + rand(2**47) ].pack("QQ")
-	end
-
-	######
-
-	public
-
-	def send(data)
-		send_framed(NaCl.crypto_box(data, snonce_my_next(), @peer[:spk], @me[:ssk]))
-	end
 
 	private
 
