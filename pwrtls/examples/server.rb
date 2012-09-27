@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-require 'eventmachine'
 require File.dirname(__FILE__) + '/../pwrtls.rb'
 
 class EchoServer < PwrConnection
