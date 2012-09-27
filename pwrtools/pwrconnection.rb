@@ -18,7 +18,7 @@ class PwrConnection
 
 	### On incoming data
 	def receive_data(data)
-		$logger.error("receive_data() not implemented")
+		$logger.warn("receive_data() not implemented")
 	end
 
 	### On successful connection establishment

@@ -163,6 +163,7 @@ class PwrCallConnection < PwrConnection
 				if !@ready
 					$logger.error("No supported packers in common :-(")
 					unbind()
+					return
 				end
 				data = @buf
 			end
@@ -212,8 +213,7 @@ class PwrCallConnection < PwrConnection
 		$logger.info("Incoming req.: <#{msgid}> #{ref}.#{fn}(#{params.inspect[1..-2]})")
 		if obj = @node.obj(ref)
 			if obj.respond_to?(fn)
-				Fiber.new{ 
-				send_response(msgid, obj.send(fn, *params)) }.resume
+				Fiber.new{ send_response(msgid, obj.send(fn, *params)) }.resume
 			else
 				send_error(msgid, "#{ref} has no method #{fn}")
 			end

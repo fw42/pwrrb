@@ -96,7 +96,10 @@ module PwrConnectionHandlerPwrTLS
 
 	def unbind()
 		@conn.unbind()
-		$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} closed") if @peer[:ip]
+		if @peer[:ip] and @state == :ready
+			$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} closed")
+		end
+		$logger.info("TCP connection with #{@peer[:ip]}:#{@peer[:port]} closed")
 	end
 
 	######
@@ -125,7 +128,8 @@ module PwrConnectionHandlerPwrTLS
 		packet = @packer.unpack(packet) unless @state == :ready
 		if @server and @state == :new
 			if !packet['spub']
-				$logger.error("Received invalid CLIENT HELLO")
+				$logger.fatal("Received invalid CLIENT HELLO")
+				unbind()
 				return
 			end
 			@peer[:spk] = packet['spub']
@@ -134,28 +138,45 @@ module PwrConnectionHandlerPwrTLS
 			@state = :server_hello_sent
 		elsif @server and @state == :server_hello_sent
 			if !packet['box'] then
-				$logger.error("Received invalid CLIENT VERIFY")
+				$logger.fatal("Received invalid CLIENT VERIFY")
+				unbind()
 				return
 			end
-			payload = @packer.unpack(decrypt(packet['box'], snonce_peer_next(), @peer[:spk], @me[:ssk]))
+			if (payload = decrypt(packet['box'], snonce_peer_next(), @peer[:spk], @me[:ssk])) == nil
+				unbind()
+				return
+			end
+			payload = @packer.unpack(payload)
 			if !payload['lpub'] or !payload['v'] or !payload['vn']
-				$logger.error("Received invalid CLIENT VERIFY")
+				$logger.fatal("Received invalid CLIENT VERIFY")
+				unbind()
 				return
 			end
 			@peer[:lpk] = payload['lpub']
 			@peer[:spk] = decrypt(payload['v'], payload['vn'], @peer[:lpk], @me[:lsk])
+			if @peer[:spk] == nil
+				unbind()
+				return
+			end
 			$logger.info("Received CLIENT VERIFY from #{@peer[:ip]}:#{@peer[:port]}")
-			$logger.error("TODO: verification!") # TODO: verification
+			$logger.warn("TODO: verification!") # TODO: verification
 			handshake_complete()
 		elsif !@server and @state == :client_hello_sent
 			if !packet['lpub'] or !packet['box']
-				$logger.error("Received incomplete SERVER HELLO")
+				$logger.fatal("Received incomplete SERVER HELLO")
+				unbind()
 				return
 			end
 			@peer[:lpk] = packet['lpub']
-			payload = @packer.unpack(decrypt(packet['box'], snonce_peer_next(), @peer[:lpk], @me[:ssk]))
+			payload = decrypt(packet['box'], snonce_peer_next(), @peer[:lpk], @me[:ssk])
+			if payload == nil
+				unbind()
+				return
+			end
+			payload = @packer.unpack(payload)
 			if !payload['spub']
-				$logger.error("Received invalid SERVER HELLO")
+				$logger.fatal("Received invalid SERVER HELLO")
+				unbind()
 				return
 			end
 			@peer[:spk] = payload['spub']
@@ -178,13 +199,18 @@ module PwrConnectionHandlerPwrTLS
 		begin
 			return NaCl.crypto_box_open(ciphertext, nonce, pk, sk)
 		rescue NaCl::OpenError
-			$logger.error("Decryption error!")
-			unbind()
+			$logger.error("Decryption error")
+			return nil
 		end
 	end
 
 	def encrypt(plaintext, nonce, pk, sk)
-		NaCl.crypto_box(plaintext, nonce, pk, sk)
+		begin
+			return NaCl.crypto_box(plaintext, nonce, pk, sk)
+		rescue ArgumentError => error
+			$logger.error("Encryption error: " + error.to_s)
+			return nil
+		end
 	end
 
 	def handshake_complete()
