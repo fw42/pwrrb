@@ -103,7 +103,7 @@ class PwrBSON < PwrUnpacker
 					data[k] = BSON::Binary.new(v)
 				end
 			end
-		elsif
+		else
 			data = { data: data }
 		end
 		return BSON.serialize(data).to_s
