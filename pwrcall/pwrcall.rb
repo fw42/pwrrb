@@ -39,7 +39,7 @@ class PwrNode
 		$logger.info("Listening on #{server}:#{port}")
 	end
 
-	def listen_plain(server, port, packers=nil, handler, &block)
+	def listen_plain(server, port, packers=nil, &block)
 		listen(server, port, PwrConnectionHandlerPlain, packers, &block)
 	end
 

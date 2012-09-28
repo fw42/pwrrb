@@ -13,8 +13,8 @@ Pwr.run do
 	node = PwrNode.new()
 	node.register(Hello.new, "hello")
 
-#	pwr = node.connect_plain("localhost", 10001, ['bson'])
-	pwr = node.connect_pwrtls("localhost", 10001, ['bson'])
+#	pwr = node.connect_plain("localhost", 10001, ['msgpack'])
+	pwr = node.connect_pwrtls("localhost", 10001, ['msgpack'])
 
 	# Check if connection failed
 	exit unless pwr

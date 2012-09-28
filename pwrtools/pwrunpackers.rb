@@ -2,6 +2,7 @@
 require 'yajl'
 require 'json'
 require 'bson'
+require 'msgpack'
 require File.dirname(__FILE__) + '/pwrlogger.rb'
 
 class PwrUnpacker
@@ -18,7 +19,7 @@ class PwrUnpacker
 	def unpack(data) end
 
 	def self.unpackers()
-		{ 'json' => PwrJSON, 'bson' => PwrBSON }
+		{ 'json' => PwrJSON, 'bson' => PwrBSON, 'msgpack' => PwrMessagePack }
 	end
 end
 
@@ -55,6 +56,28 @@ class PwrJSON < PwrUnpacker
 	def parse_complete(json)
 		@ready.push(json)
 		$logger.debug("JSON parsed: " + json.inspect)
+	end
+end
+
+class PwrMessagePack < PwrUnpacker
+	def initialize()
+		@parser = MessagePack::Unpacker.new()
+		super
+	end
+
+	def feed(data)
+		@parser.feed(data)
+		@parser.each do |obj|
+			@ready.push(obj)
+		end
+	end
+
+	def unpack(data)
+		MessagePack::unpack(data)
+	end
+
+	def pack(data)
+		MessagePack::pack(data)
 	end
 end
 
