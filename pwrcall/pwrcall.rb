@@ -159,7 +159,7 @@ class PwrCallConnection < PwrConnection
 				end
 				if !@ready
 					$logger.error("No supported packers in common :-(")
-					unbind()
+					@fiber.resume(false) unless @server
 					return
 				end
 				data = @buf
@@ -176,13 +176,20 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def unbind()
+		### PwrCall connetion was okay before, now closing
 		if @peer and @ready
 			$logger.info("PwrCall connection with #{@peer[1]}:#{@peer[0]} closed")
 		end
+
+		### Client is not able to open TCP connection
 		if !@server and !@peer and @fiber.alive?
 			$logger.error("Connection failed")
 			@fiber.resume(false)
+		### Client is connected via TCP, but PwrCall fails (no packers in common, ...)
+		elsif @peer and !@ready
+			$logger.error("Could not establish PwrCall connection with #{@peer[1]}:#{@peer[0]}")
 		end
+
 		@ready = false
 		@pending.keys.each do |k|
 			@pending[k].set_error("Connection lost")

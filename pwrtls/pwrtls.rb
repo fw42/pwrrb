@@ -22,7 +22,13 @@ end
 module PwrConnectionHandlerPwrTLS
 	def initialize(conn=nil)
 		set_connection(conn)
+
+		if !PwrUnpacker.unpackers['bson'] then
+			$logger.fatal("PwrTLS requires BSON :-(")
+			exit
+		end
 		@packer = PwrBSON.new()
+
 		@buf = ""
 		@state = :new
 		@peer = {}
@@ -94,7 +100,7 @@ module PwrConnectionHandlerPwrTLS
 	end
 
 	def unbind()
-		@conn.unbind()
+		@conn.unbind() if @conn
 		if @peer[:ip] and @state == :ready
 			$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} closed")
 		end

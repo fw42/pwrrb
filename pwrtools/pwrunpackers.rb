@@ -1,11 +1,9 @@
 #!/usr/bin/env ruby
-require 'yajl'
-require 'json'
-require 'bson'
-require 'msgpack'
+# more requires at the bottom
 require File.dirname(__FILE__) + '/pwrlogger.rb'
 
 class PwrUnpacker
+	@@unpackers = {}
 	def initialize()
 		@ready = []
 	end
@@ -19,7 +17,11 @@ class PwrUnpacker
 	def unpack(data) end
 
 	def self.unpackers()
-		{ 'json' => PwrJSON, 'bson' => PwrBSON, 'msgpack' => PwrMessagePack }
+		return @@unpackers
+	end
+
+	def self.add_unpacker(key, classname)
+		@@unpackers[key] = classname
 	end
 end
 
@@ -135,4 +137,26 @@ class PwrBSON < PwrUnpacker
 	def pack_binary(data)
 		pack(data, true)
 	end
+end
+
+begin
+	require 'yajl'
+	require 'json'
+	PwrUnpacker.add_unpacker('json', PwrJSON)
+rescue LoadError
+	$logger.debug("No JSON support :-(")
+end
+
+begin
+	require 'msgpack'
+	PwrUnpacker.add_unpacker('msgpack', PwrMessagePack)
+rescue LoadError
+	$logger.debug("No MessagePack support :-(")
+end
+
+begin
+	require 'bson'
+	PwrUnpacker.add_unpacker('bson', PwrBSON)
+rescue LoadError
+	$logger.debug("No BSON support :-(")
 end
