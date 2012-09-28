@@ -121,6 +121,11 @@ module PwrConnectionHandlerPwrTLS
 		return snonce(@peer[:snonce])
 	end
 
+	def lnonce_my_next()
+		@me[:lnonce] += 2
+		return lnonce(@me[:lnonce])
+	end
+
 	def snonce(num)
 		"pwrnonceshortXXX" + [ num ].pack("Q")
 	end
@@ -254,7 +259,7 @@ module PwrConnectionHandlerPwrTLS
 	end
 
 	def send_client_verify()
-		vn = lnonce(@me[:lnonce])
+		vn = lnonce_my_next()
 		send_unencrypted(@packer.pack_binary({
 			box: encrypt(@packer.pack_binary({
 				lpub: @me[:lpk], v: encrypt(@me[:spk], vn, @peer[:lpk], @me[:lsk]), vn: vn

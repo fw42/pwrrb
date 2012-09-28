@@ -1,7 +1,7 @@
 pwrrb: pwrcall and pwrtls for Ruby
 ==================================
 
-[pwrcall](https://github.com/rep/pwrcall) is an experimental
+[pwrcall](https://github.com/rep/pwrcall) is an experimental and light-weight
 [remote procedure call system (RPC)](https://en.wikipedia.org/wiki/Remote_procedure_call)
 with integrated
 [capability-based security](https://en.wikipedia.org/wiki/Capability-based_security),
