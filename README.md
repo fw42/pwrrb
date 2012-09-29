@@ -19,7 +19,7 @@ Requirements
 ------------
 You will need at least the following Ruby gems:
 * eventmachine (for event magic)
-* bson, json, yajl-ruby (for message packing)
+* bson, msgpack, or json and yajl-ruby (for message packing)
 * [nacl](https://github.com/mogest/nacl) (for hyper security)
 * colorize (for increased fancyness)
 
