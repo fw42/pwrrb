@@ -2,9 +2,39 @@
 require File.dirname(__FILE__) + '/../pwr.rb'
 require File.dirname(__FILE__) + '/../pwrtls/pwrtls.rb'
 
+require 'uri'
+module URI
+	class PWRCALL < Generic
+		DEFAULT_PORT = 10000
+		COMPONENT = [ :scheme, :userinfo, :host, :port, :path ]
+		@@schemes['PWRCALL'] = PWRCALL
+
+		def capability()
+			return self.path.gsub(/^\//, "").gsub(/\/$/, "")
+		end
+
+		def fingerprint()
+			return self.userinfo
+		end
+	end
+end
+
+class PwrObj
+	def initialize(pwrcon, capability)
+		@pwrcon = pwrcon
+		@capability = capability
+	end
+
+	def method_missing(m, *args)
+		@pwrcon.call(@capability, m, *args).result()
+	end  
+end
+
 class PwrNode
 	def initialize()
 		@exports = {}
+		@extern = {}
+		@conns = {}
 	end
 
 	def register(obj, ref)
@@ -18,7 +48,11 @@ class PwrNode
 	def connect(server, port, handler, packers=nil)
 		pwrconn = PwrCallConnection.new(self, packers)
 		EventMachine::connect(server, port, handler, pwrconn)
-		return Fiber.yield ? pwrconn : nil
+		if Fiber.yield
+			return @conns[[server,port]] = pwrconn
+		else
+			return nil
+		end
 	end
 
 	def connect_plain(server, port, packers=nil)
@@ -27,6 +61,23 @@ class PwrNode
 
 	def connect_pwrtls(server, port, packers=nil)
 		connect(server, port, PwrConnectionHandlerPwrTLS, packers)
+	end
+
+	def open_url(url, packers=nil, forcenewcon=nil)
+		url = URI(url) if url.class == String
+
+		### Do we already know this capability?
+		if @extern[url.capability] and @conns[[url.host, url.port]]
+			return @extern[url.capability], @conns[[url.host, url.port]]
+		end
+
+		### Do we already know this connection (possibly in combination with another capability)?
+		if @conns[[url.host, url.port]] == nil
+			@conns[[url.host, url.port]] = connect_pwrtls(url.host, url.port, packers)
+		end
+
+		@extern[url.capability] = PwrObj.new(@conns[[url.host, url.port]], url.capability)
+		return @extern[url.capability], @conns[[url.host, url.port]]
 	end
 
 	def listen(server, port, handler, packers=nil, &block)
@@ -124,6 +175,10 @@ class PwrCallConnection < PwrConnection
 		send_request(@msgid, ref, fn, *params)
 		@msgid += 1
 		return @pending[@msgid-1]
+	end
+
+	def open_cap(cap)
+		PwrObj.new(self, cap)
 	end
 
 	######

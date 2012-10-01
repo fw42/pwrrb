@@ -101,10 +101,12 @@ module PwrConnectionHandlerPwrTLS
 
 	def unbind()
 		@conn.unbind() if @conn
-		if @peer[:ip] and @state == :ready
-			$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} closed")
+		if @peer[:ip]
+			if @state == :ready
+				$logger.info("PwrTLS connection with #{@peer[:ip]}:#{@peer[:port]} closed")
+			end
+			$logger.info("TCP connection with #{@peer[:ip]}:#{@peer[:port]} closed")
 		end
-		$logger.info("TCP connection with #{@peer[:ip]}:#{@peer[:port]} closed")
 	end
 
 	######

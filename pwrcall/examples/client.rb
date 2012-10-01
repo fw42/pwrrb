@@ -12,28 +12,29 @@ Pwr.run do
 
 	node = PwrNode.new()
 	node.register(Hello.new, "hello")
-
-#	pwr = node.connect_plain("localhost", 10001, ['msgpack'])
-	pwr = node.connect_pwrtls("localhost", 10001, ['msgpack'])
+	obj, pwr = node.open_url("pwrcall://localhost:10001/foobar")
 
 	# Check if connection failed
 	exit unless pwr
 
-	# Sleep. This is "blocking".
-	pwr.call("foobar", "sleep", 1).result()
+	# Sleep call. This is "blocking".
+	pwr.call("sleep", 1).result()
+
+	# ... which is equivalent to:
+	obj.sleep(1)
 
 	# "Thread" 1
 	f1 = PwrFiber.new{
-		puts "23 + 42 = #{pwr.call("foobar", "add", 23, 42).result()}"
-		puts "17 + 42 = #{pwr.call("foobar", "add", 17, 42).result()}"
-		res = pwr.call("foobar", "callme", "hello", "hello", "parameter eins", "parameter zwei").result()
-		puts res.inspect
+		puts "23 + 42 = %d" % obj.add(23, 42)
+		puts "17 + 42 = %d" % obj.add(17, 42)
+		puts obj.callme("hello", "one", [ "two" ], { three: true })
 	}.resume()
 
 	# "Thread" 2
 	f2 = PwrFiber.new{
-		pwr.call("foobar", "sleep", 2).result()
+		puts pwr.call("foobar", "sleep", 2).result()
 		puts "17 + 5 = #{pwr.call("foobar", "add", 17, 5).result()}"
+		puts "string concat = #{pwr.call("foobar", "add", "string", "concat").result()}"
 	}.resume()
 
 	# Wait for Fibers to finish
