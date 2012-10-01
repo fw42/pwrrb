@@ -150,7 +150,7 @@ class PwrCallConnection < PwrConnection
 	OP = { request: 0, response: 1, notify: 2 }
 	VERSION = "pwrcallrb_v0.1"
 
-	attr_reader :server
+	attr_reader :server, :peer
 
 	public
 
@@ -272,7 +272,14 @@ class PwrCallConnection < PwrConnection
 		$logger.info("Incoming req.: <#{msgid}> #{ref}.#{fn}(#{params.inspect[1..-2]})")
 		if obj = @node.obj(ref)
 			if obj.respond_to?(fn)
-				Fiber.new{ send_response(msgid, obj.send(fn, *params)) }.resume
+				Fiber.new{
+					### Monkey patching magic, add instance variable to object at runtime :-)
+					class << obj
+						attr_accessor :pwrcall_current_connection
+					end
+					obj.pwrcall_current_connection = self
+					send_response(msgid, obj.send(fn, *params))
+				}.resume
 			else
 				send_error(msgid, "#{ref} has no method #{fn}")
 			end

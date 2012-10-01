@@ -1,17 +1,18 @@
 #!/usr/bin/env ruby
 require File.dirname(__FILE__) + '/../pwrcall.rb'
 
-class Hello
-	def hello(*p)
-		puts "Someone called hello() on me with parameters: #{p.inspect}"
-		return "Hello, parameters were: #{p.inspect}"
+class Example
+	def hello(*args)
+		peer = "%s:%s" % @pwrcall_current_connection.peer.reverse
+		puts "#{peer} called hello() on me with parameters: #{args.inspect}"
+		return "Hello, parameters were: #{args.inspect}"
 	end
 end
 
 Pwr.run do
 
 	node = PwrNode.new()
-	node.register(Hello.new, "hello")
+	node.register(Example.new, "example")
 	obj, pwr = node.open_url("pwrcall://localhost:10001/foobar")
 
 	# Check if connection failed
@@ -27,7 +28,7 @@ Pwr.run do
 	f1 = PwrFiber.new{
 		puts "23 + 42 = %d" % obj.add(23, 42)
 		puts "17 + 42 = %d" % obj.add(17, 42)
-		puts obj.callme("hello", "one", [ "two" ], { three: true })
+		puts obj.callme("example", "hello", "one", [ "two" ], { three: true })
 	}.resume()
 
 	# "Thread" 2
