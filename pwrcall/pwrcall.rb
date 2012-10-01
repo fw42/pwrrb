@@ -63,7 +63,7 @@ class PwrNode
 		connect(server, port, PwrConnectionHandlerPwrTLS, packers)
 	end
 
-	def open_url(url, packers=nil, forcenewcon=nil)
+	def open_url(url, packers=nil)
 		url = URI(url) if url.class == String
 
 		### Do we already know this capability?
@@ -78,6 +78,10 @@ class PwrNode
 
 		@extern[url.capability] = PwrObj.new(@conns[[url.host, url.port]], url.capability)
 		return @extern[url.capability], @conns[[url.host, url.port]]
+	end
+
+	def open_cap(cap, con)
+		@extern[cap] = @extern[cap] || PwrObj.new(con, cap)
 	end
 
 	def listen(server, port, handler, packers=nil, &block)
@@ -178,7 +182,7 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def open_cap(cap)
-		PwrObj.new(self, cap)
+		@node.open_cap(cap, self)
 	end
 
 	######
