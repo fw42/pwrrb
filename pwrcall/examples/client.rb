@@ -19,7 +19,7 @@ Pwr.run do
 	exit unless pwr
 
 	# Sleep call. This is "blocking".
-	pwr.call("sleep", 1).result()
+	pwr.call("foobar", "sleep", 1).result()
 
 	# ... which is equivalent to:
 	obj.sleep(1)
