@@ -45,9 +45,9 @@ class PwrNode
 		@exports[ref]
 	end
 
-	def connect(server, port, handler, packers=nil)
+	def connect(server, port, handler, packers=nil, *args)
 		pwrconn = PwrCallConnection.new(self, packers)
-		EventMachine::connect(server, port, handler, pwrconn)
+		EventMachine::connect(server, port, handler, pwrconn, *args)
 		if Fiber.yield
 			return @conns[[server,port]] = pwrconn
 		else
@@ -59,8 +59,8 @@ class PwrNode
 		connect(server, port, PwrConnectionHandlerPlain, packers)
 	end
 
-	def connect_pwrtls(server, port, packers=nil)
-		connect(server, port, PwrConnectionHandlerPwrTLS, packers)
+	def connect_pwrtls(server, port, packers=nil, keypair=nil, fingerprint=nil)
+		connect(server, port, PwrConnectionHandlerPwrTLS, packers, keypair, fingerprint)
 	end
 
 	def open_url(url, packers=nil)
@@ -73,7 +73,7 @@ class PwrNode
 
 		### Do we already know this connection (possibly in combination with another capability)?
 		if @conns[[url.host, url.port]] == nil
-			@conns[[url.host, url.port]] = connect_pwrtls(url.host, url.port, packers)
+			@conns[[url.host, url.port]] = connect_pwrtls(url.host, url.port, packers, nil, url.fingerprint)
 		end
 
 		@extern[url.capability] = PwrObj.new(@conns[[url.host, url.port]], url.capability)
@@ -84,8 +84,8 @@ class PwrNode
 		@extern[cap] = @extern[cap] || PwrObj.new(con, cap)
 	end
 
-	def listen(server, port, handler, packers=nil, &block)
-		EventMachine::start_server(server, port, handler) do |c|
+	def listen(server, port, handler, packers=nil, keypair=nil, &block)
+		EventMachine::start_server(server, port, handler, nil, keypair) do |c|
 			pwrconn = PwrCallConnection.new(self, packers, true)
 			c.set_connection(pwrconn)
 			c.server_accepted()
@@ -98,8 +98,9 @@ class PwrNode
 		listen(server, port, PwrConnectionHandlerPlain, packers, &block)
 	end
 
-	def listen_pwrtls(server, port, packers=nil, &block)
-		listen(server, port, PwrConnectionHandlerPwrTLS, packers, &block)
+	def listen_pwrtls(server, port, keypairfile=nil, packers=nil, &block)
+		keypair = PwrTLS.keypair_load(keypairfile)
+		listen(server, port, PwrConnectionHandlerPwrTLS, packers, keypair, &block)
 	end
 end
 

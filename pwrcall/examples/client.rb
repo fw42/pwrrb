@@ -13,7 +13,7 @@ Pwr.run do
 
 	node = PwrNode.new()
 	node.register(Example.new, "example")
-	obj, pwr = node.open_url("pwrcall://localhost:10001/foobar")
+	obj, pwr = node.open_url("pwrcall://21bc7f3c3956e5aa04a6dc33fea9d2b913b4157c@localhost:10001/foobar")
 
 	# Check if connection failed
 	exit unless pwr

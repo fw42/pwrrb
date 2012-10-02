@@ -21,5 +21,5 @@ Pwr.run do
 	node.register(Stuff.new, "foobar")
 
 #	node.listen_plain("0.0.0.0", 10001) {}
-	node.listen_pwrtls("0.0.0.0", 10001) {}
+	node.listen_pwrtls("0.0.0.0", 10001, "example_server_keypair") {}
 end

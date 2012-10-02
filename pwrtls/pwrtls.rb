@@ -53,8 +53,12 @@ module PwrConnectionHandlerPwrTLS
 
 		@buf = ""
 		@state = :new
-		@peer = { fingerprint: fingerprint }
+		@peer = {}
 		@me = {}
+
+		if fingerprint
+			@peer[:fingerprint] = fingerprint.downcase
+		end
 
 		### Client sends the first message
 		if @server = (conn == nil)
@@ -74,7 +78,9 @@ module PwrConnectionHandlerPwrTLS
 		end
 		@me[:lpk] = keypair["pubkey"]
 		@me[:lsk] = keypair["privkey"]
-		@me[:nonce] = keypair["nonce"]
+		@me[:lnonce] = keypair["nonce"]
+
+		$logger.info("Using public-key with fingerprint #{PwrTLS.key_fingerprint(@me[:lpk])}")
 	end
 
 	###### Interface to PwrConnection
@@ -197,15 +203,8 @@ module PwrConnectionHandlerPwrTLS
 				return
 			end
 			$logger.info("Received CLIENT VERIFY from #{@peer[:ip]}:#{@peer[:port]}")
-#			if @peer[:fingerprint]
-#				if PwrTLS.key_fingerprint(@peer[:lpk]).downcase != @peer[:fingerprint].downcase
-#					$logger.fatal("Server public-key fingerprint does not match expected fingerprint!")
-#					unbind()
-#					return
-#				end
-#			else
-#				$logger.warn("Server is not authenticated! No fingerprint known!")
-#			end
+			fp = PwrTLS.key_fingerprint(@peer[:lpk]).downcase
+			$logger.warn("Client not authenticated! Fingerprint #{fp} not known.") # TODO
 			handshake_complete()
 		elsif !@server and @state == :client_hello_sent
 			if !packet['lpub'] or !packet['box']
@@ -214,6 +213,19 @@ module PwrConnectionHandlerPwrTLS
 				return
 			end
 			@peer[:lpk] = packet['lpub']
+			if @peer[:fingerprint]
+				fp = PwrTLS.key_fingerprint(@peer[:lpk]).downcase
+				if fp != @peer[:fingerprint]
+					$logger.fatal("Server public-key fingerprint does not match expected fingerprint!")
+					$logger.fatal("#{fp} != #{@peer[:fingerprint]}")
+					unbind()
+					return
+				else
+					$logger.info("Server public-key with fingerprint #{fp} okay.")
+				end
+			else
+				$logger.warn("Server is not authenticated! No fingerprint known!")
+			end
 			payload = decrypt(packet['box'], snonce_peer_next(), @peer[:lpk], @me[:ssk])
 			if payload == nil
 				unbind()
