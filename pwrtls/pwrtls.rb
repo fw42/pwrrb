@@ -21,7 +21,7 @@ class PwrTLS
 	def self.keypair_init(filename=nil)
 		packer = PwrBSON.new()
 		pk, sk = NaCl.crypto_box_keypair
-		data = { pubkey: pk, privkey: sk, nonce: 1 }
+		data = { "pubkey" => pk, "privkey" => sk, "nonce" => 1 }
 		if filename
 			f = File.open(filename, "wb")
 			f.write packer.pack_binary(data)
@@ -35,10 +35,14 @@ class PwrTLS
 		data = File.read(filename)
 		return packer.unpack(data)
 	end
+
+	def self.key_fingerprint(key)
+		Digest::SHA1.hexdigest(key)
+	end
 end
 
 module PwrConnectionHandlerPwrTLS
-	def initialize(conn=nil)
+	def initialize(conn=nil, keypair=nil, fingerprint=nil)
 		set_connection(conn)
 
 		if !PwrUnpacker.unpackers['bson'] then
@@ -49,7 +53,7 @@ module PwrConnectionHandlerPwrTLS
 
 		@buf = ""
 		@state = :new
-		@peer = {}
+		@peer = { fingerprint: fingerprint }
 		@me = {}
 
 		### Client sends the first message
@@ -64,9 +68,13 @@ module PwrConnectionHandlerPwrTLS
 		### Short-term keypair
 		@me[:spk], @me[:ssk] = NaCl.crypto_box_keypair()
 
-		### TODO: load this from file
-		@me[:lpk], @me[:lsk] = NaCl.crypto_box_keypair()
-		@me[:lnonce] = 1
+		### Long-term keypair and nonce
+		if !keypair
+			keypair = PwrTLS.keypair_init()
+		end
+		@me[:lpk] = keypair["pubkey"]
+		@me[:lsk] = keypair["privkey"]
+		@me[:nonce] = keypair["nonce"]
 	end
 
 	###### Interface to PwrConnection
@@ -189,7 +197,15 @@ module PwrConnectionHandlerPwrTLS
 				return
 			end
 			$logger.info("Received CLIENT VERIFY from #{@peer[:ip]}:#{@peer[:port]}")
-			$logger.warn("TODO: verification!") # TODO: verification
+#			if @peer[:fingerprint]
+#				if PwrTLS.key_fingerprint(@peer[:lpk]).downcase != @peer[:fingerprint].downcase
+#					$logger.fatal("Server public-key fingerprint does not match expected fingerprint!")
+#					unbind()
+#					return
+#				end
+#			else
+#				$logger.warn("Server is not authenticated! No fingerprint known!")
+#			end
 			handshake_complete()
 		elsif !@server and @state == :client_hello_sent
 			if !packet['lpub'] or !packet['box']
