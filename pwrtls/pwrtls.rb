@@ -17,6 +17,24 @@ class PwrTLS
 		end
 		$logger.info("Listening on #{server}:#{port}")
 	end
+
+	def self.keypair_init(filename=nil)
+		packer = PwrBSON.new()
+		pk, sk = NaCl.crypto_box_keypair
+		data = { pubkey: pk, privkey: sk, nonce: 1 }
+		if filename
+			f = File.open(filename, "wb")
+			f.write packer.pack_binary(data)
+			f.close
+		end
+		return data
+	end
+
+	def self.keypair_load(filename)
+		packer = PwrBSON.new()
+		data = File.read(filename)
+		return packer.unpack(data)
+	end
 end
 
 module PwrConnectionHandlerPwrTLS

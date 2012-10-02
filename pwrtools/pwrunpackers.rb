@@ -123,6 +123,7 @@ class PwrBSON < PwrUnpacker
 
 	def pack(data, binary=false)
 		if binary and data.class == Hash
+			data = data.dup
 			data.each do |k,v|
 				if v.class == String then
 					data[k] = BSON::Binary.new(v)
