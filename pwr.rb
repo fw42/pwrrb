@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 require 'eventmachine'
+require 'forwardable'
+require 'em-systemcommand'
 require 'fiber'
 require File.dirname(__FILE__) + '/pwrtools/pwrlogger.rb'
 require File.dirname(__FILE__) + '/pwrtools/pwrconnection.rb'

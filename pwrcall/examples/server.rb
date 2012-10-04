@@ -1,7 +1,5 @@
 #!/usr/bin/env ruby
 require File.dirname(__FILE__) + '/../pwrcall.rb'
-require 'forwardable'
-require 'em-systemcommand'
 
 class Stuff
 	def add(a,b)
