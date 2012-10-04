@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 require File.dirname(__FILE__) + '/../pwrcall.rb'
+require 'forwardable'
+require 'em-systemcommand'
 
 class Stuff
 	def add(a,b)
@@ -13,6 +15,10 @@ class Stuff
 
 	def callme(cap, *args)
 		@pwrcall_current_connection.call(cap, *args).result()
+	end
+
+	def exec(cmd)
+		Pwr.exec(cmd)
 	end
 end
 

@@ -26,6 +26,9 @@ Pwr.run do
 
 	# "Thread" 1
 	f1 = PwrFiber.new{
+		# Execute some remote command and get the output
+		puts "Localtime on server: " + obj.exec("sleep 1; date")
+
 		puts "23 + 42 = %d" % obj.add(23, 42)
 		puts "17 + 42 = %d" % obj.add(17, 42)
 		puts obj.callme("example", "hello", "one", [ "two" ], { three: true })
@@ -33,7 +36,6 @@ Pwr.run do
 
 	# "Thread" 2
 	f2 = PwrFiber.new{
-		puts pwr.call("foobar", "sleep", 2).result()
 		puts "17 + 5 = #{pwr.call("foobar", "add", 17, 5).result()}"
 		puts "string concat = #{pwr.call("foobar", "add", "string", "concat").result()}"
 	}.resume()

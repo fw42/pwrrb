@@ -25,4 +25,18 @@ class Pwr
 		EventMachine::Timer.new(n) do f.resume end
 		Fiber.yield
 	end
+
+	def self.exec(cmd)
+		f = Fiber.current
+		output = ""
+		EM::SystemCommand.execute cmd do |on|
+			on.stdout.data do |data|
+				output += data
+			end
+			on.success do
+				f.resume(output)
+			end
+		end
+		Fiber.yield
+	end
 end
