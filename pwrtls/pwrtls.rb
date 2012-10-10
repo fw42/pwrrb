@@ -169,7 +169,7 @@ module PwrConnectionHandlerPwrTLS
 	end
 
 	def handle_packet(packet)
-		packet = @packer.unpack(packet) unless @state == :ready
+		packet = @packer.unpack(packet) unless @state == :ready or @state == :server_hello_sent
 		if @server and @state == :new
 			if !packet['spub']
 				$logger.fatal("Received invalid CLIENT HELLO")
@@ -181,12 +181,8 @@ module PwrConnectionHandlerPwrTLS
 			send_server_hello()
 			@state = :server_hello_sent
 		elsif @server and @state == :server_hello_sent
-			if !packet['box'] then
-				$logger.fatal("Received invalid CLIENT VERIFY")
-				unbind()
-				return
-			end
-			if (payload = decrypt(packet['box'], snonce_peer_next(), @peer[:spk], @me[:ssk])) == nil
+			### Client verify
+			if (payload = decrypt(packet, snonce_peer_next(), @peer[:spk], @me[:ssk])) == nil
 				unbind()
 				return
 			end
