@@ -38,7 +38,7 @@ class Pwr
 
 			on_exit = lambda do |ps|
 				output = output.split("\n") if output
-				f.resume([ps.status.exitstatus, ps, output])
+				f.resume([ps.status.exitstatus, output])
 			end
 
 			on.success do |ps| on_exit.call(ps) end

@@ -21,6 +21,7 @@ module NonblockingKeyboard
 			Fiber.yield
 		end
 		data, @buffer = @buffer[0...cnt], @buffer[cnt..-1]
+		@buffer = "" unless @buffer
 		data
   end
 
