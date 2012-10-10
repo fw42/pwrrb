@@ -22,6 +22,7 @@ You will need at least the following Ruby gems:
 * bson, msgpack, or json and yajl-ruby (for message packing)
 * [nacl](https://github.com/mogest/nacl) (for hyper security)
 * colorize (for increased fancyness)
+* rb-readline (for non-blocking readline and interactive pwrcall shell)
 
 TODO
 ----

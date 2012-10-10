@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 require 'rb-readline'
 require 'pry'
-require File.expand_path("../../pwrcall.rb", __FILE__)
-require File.expand_path("../nonblocking_keyboard.rb", __FILE__)
+require File.expand_path("../pwrcall.rb", __FILE__)
+require File.expand_path("../../pwrtools/nonblocking_keyboard.rb", __FILE__)
 
 Pwr.run do
 	PwrFiber.new{
