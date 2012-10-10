@@ -2,8 +2,8 @@
 require File.expand_path("../../pwrcall.rb", __FILE__)
 
 class Stuff
-	def add(a,b)
-		a+b
+	def add(*args)
+		args.inject(&:+)
 	end
 
 	def sleep(n)
