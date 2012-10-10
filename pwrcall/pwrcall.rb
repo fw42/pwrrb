@@ -5,12 +5,13 @@ require File.expand_path("../../pwrtls/pwrtls.rb", __FILE__)
 require 'uri'
 module URI
 	class PWRCALL < Generic
-		DEFAULT_PORT = 10000
+		DEFAULT_PORT = 10005
 		COMPONENT = [ :scheme, :userinfo, :host, :port, :path ]
 		@@schemes['PWRCALL'] = PWRCALL
 
 		def capability()
-			return self.path.gsub(/^\//, "").gsub(/\/$/, "")
+			cap = self.path.gsub(/^\//, "").gsub(/\/$/, "")
+			cap == "" ? nil : cap
 		end
 
 		def fingerprint()
@@ -63,21 +64,29 @@ class PwrNode
 		connect(server, port, PwrConnectionHandlerPwrTLS, packers, keypair, fingerprint)
 	end
 
-	def open_url(url, packers=nil)
+	def open_url(url, packers=nil, pwrtls=true)
 		url = URI(url) if url.class == String
 
 		### Do we already know this capability?
-		if @extern[url.capability] and @conns[[url.host, url.port]]
+		if url.capability and @extern[url.capability] and @conns[[url.host, url.port]]
 			return @extern[url.capability], @conns[[url.host, url.port]]
 		end
 
 		### Do we already know this connection (possibly in combination with another capability)?
 		if @conns[[url.host, url.port]] == nil
-			@conns[[url.host, url.port]] = connect_pwrtls(url.host, url.port, packers, nil, url.fingerprint)
+			if pwrtls
+				@conns[[url.host, url.port]] = connect_pwrtls(url.host, url.port, packers, nil, url.fingerprint)
+			else
+				@conns[[url.host, url.port]] = connect_plain(url.host, url.port, packers)
+			end
 		end
 
-		@extern[url.capability] = PwrObj.new(@conns[[url.host, url.port]], url.capability)
-		return @extern[url.capability], @conns[[url.host, url.port]]
+		if url.capability
+			@extern[url.capability] = PwrObj.new(@conns[[url.host, url.port]], url.capability)
+			return @extern[url.capability], @conns[[url.host, url.port]]
+		else
+			return nil, @conns[[url.host, url.port]]
+		end
 	end
 
 	def open_cap(cap, con)
@@ -89,9 +98,9 @@ class PwrNode
 			pwrconn = PwrCallConnection.new(self, packers, true)
 			c.set_connection(pwrconn)
 			c.server_accepted()
-			block.yield(pwrconn)
+			block.yield(pwrconn) if block
 		end
-		$logger.info("Listening on #{server}:#{port}")
+		$logger.info("Listening on #{server}:#{port} (#{handler.to_s.gsub(/^PwrConnectionHandler/, "")})")
 	end
 
 	def listen_plain(server, port, packers=nil, &block)

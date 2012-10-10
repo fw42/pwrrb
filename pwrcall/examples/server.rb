@@ -24,6 +24,6 @@ Pwr.run do
 	node = PwrNode.new()
 	node.register(Stuff.new, "foobar")
 
-#	node.listen_plain("0.0.0.0", 10001) {}
-	node.listen_pwrtls("0.0.0.0", 10001, File.expand_path("../example_server_keypair", __FILE__)) {}
+	node.listen_plain("0.0.0.0", 10004) {}
+	node.listen_pwrtls("0.0.0.0", 10005, File.expand_path("../example_server_keypair", __FILE__)) {}
 end

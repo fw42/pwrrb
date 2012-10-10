@@ -1,14 +1,51 @@
 #!/usr/bin/env ruby
 require 'rb-readline'
 require 'pry'
+require 'optparse'
 require File.expand_path("../pwrcall.rb", __FILE__)
 require File.expand_path("../../pwrtools/nonblocking_keyboard.rb", __FILE__)
+
+options = {}
+optparse = OptionParser.new do |opts|
+	opts.on('-h', '--help', 'Display help') do
+		puts opts
+		exit
+	end
+
+	opts.on('-l', '--listen', 'Listen as server') do
+		options[:listen] = true
+	end
+
+	opts.on('-o', '--openurl URL', 'Open a pwrcall URL') do |u|
+		options[:url] = u
+	end
+
+	opts.on('-p', '--plain', 'Connect plain (unencrypted)') do
+		options[:plain] = true
+	end
+end
+optparse.parse!
 
 Pwr.run do
 	PwrFiber.new{
 		EM.open_keyboard(NonblockingKeyboard) do |kb|
 			node = PwrNode.new()
-			example_url = "pwrcall://21bc7f3c3956e5aa04a6dc33fea9d2b913b4157c@localhost:10001/foobar"
+			pwr = obj = nil
+
+			if options[:listen]
+				node.listen_plain("0.0.0.0", 10004)
+				node.listen_pwrtls("0.0.0.0", 10005,
+					File.expand_path("../examples/example_server_keypair", __FILE__)
+				)
+			end
+
+			if options[:url]
+				if options[:plain] and URI(options[:url]).port == URI::PWRCALL::DEFAULT_PORT
+					$logger.warn("Sure that you use the right port?")
+				end
+				obj, pwr = node.open_url(options[:url], nil, !options[:plain])
+			end
+
 			Pry.prompt = [
 				proc { |obj, nest_level| "pwr> " },
 				proc { |obj, nest_level| "pwr> " }
