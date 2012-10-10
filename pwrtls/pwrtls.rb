@@ -308,11 +308,11 @@ module PwrConnectionHandlerPwrTLS
 
 	def send_client_verify()
 		vn = lnonce_my_next()
-		send_unencrypted(@packer.pack_binary({
-			box: encrypt(@packer.pack_binary({
+		send_unencrypted(
+			encrypt(@packer.pack_binary({
 				lpub: @me[:lpk], v: encrypt(@me[:spk], vn, @peer[:lpk], @me[:lsk]), vn: vn
 			}), snonce_my_next(), @peer[:spk], @me[:ssk])
-		}))
+		)
 		$logger.info("Sent CLIENT VERIFY to #{@peer[:ip]}:#{@peer[:port]}")
 	end
 

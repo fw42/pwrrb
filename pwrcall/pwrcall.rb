@@ -290,7 +290,7 @@ class PwrCallConnection < PwrConnection
 					end
 				}.resume
 			else
-				send_error(msgid, "#{ref} has no method #{fn}")
+				send_error(msgid, "#{ref}.#{fn}() does not exist")
 			end
 		else
 			send_error(msgid, "#{ref} does not exist")
@@ -321,6 +321,7 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def send_error(msgid, error)
+		$logger.info("Outgoing err.: <#{msgid}> #{error.inspect}")
 		send(@packer.pack([ OP[:response], msgid, error, nil ]))
 	end
 

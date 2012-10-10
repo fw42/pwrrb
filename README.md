@@ -30,6 +30,7 @@ TODO
     * proxy support
 * pwrtls
     * verify all crypto boxes and keys
+    * increment lnonce in keyfile
 * pwrtools
     * getopt
     * logger
