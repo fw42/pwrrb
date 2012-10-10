@@ -283,7 +283,11 @@ class PwrCallConnection < PwrConnection
 						attr_accessor :pwrcall_current_connection
 					end
 					obj.pwrcall_current_connection = self
-					send_response(msgid, obj.send(fn, *params))
+					begin
+						send_response(msgid, obj.send(fn, *params))
+					rescue => errormsg
+						send_error(msgid, errormsg.inspect)
+					end
 				}.resume
 			else
 				send_error(msgid, "#{ref} has no method #{fn}")
@@ -336,7 +340,7 @@ class PwrCallConnection < PwrConnection
 end
 
 module PwrConnectionHandlerPlain
-	def initialize(conn=nil)
+	def initialize(conn=nil, *args)
 		set_connection(conn)
 	end
 
