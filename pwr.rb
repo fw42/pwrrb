@@ -35,9 +35,14 @@ class Pwr
 			on.stdout.data do |data|
 				output += data
 			end
-			on.success do
-				f.resume(output)
+
+			on_exit = lambda do |ps|
+				output = output.split("\n") if output
+				f.resume([ps.status.exitstatus, ps, output])
 			end
+
+			on.success do |ps| on_exit.call(ps) end
+			on.failure do |ps| on_exit.call(ps) end
 		end
 		Fiber.yield
 	end
