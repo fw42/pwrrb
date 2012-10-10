@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
-require File.dirname(__FILE__) + '/../pwr.rb'
-require File.dirname(__FILE__) + '/../pwrtls/pwrtls.rb'
+require File.expand_path("../../pwr.rb", __FILE__)
+require File.expand_path("../../pwrtls/pwrtls.rb", __FILE__)
 
 require 'uri'
 module URI

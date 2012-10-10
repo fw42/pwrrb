@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-require File.dirname(__FILE__) + '/../pwrtls.rb'
+require File.expand_path("../../pwrtls.rb", __FILE__)
 
 class EchoClient < PwrConnection
 	def receive_data(data)

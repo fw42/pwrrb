@@ -1,5 +1,5 @@
 #!/usr/bin/env/ruby
-require File.dirname(__FILE__) + '/../pwr.rb'
+require File.expand_path("../../pwr.rb", __FILE__)
 require 'nacl'
 
 class PwrTLS

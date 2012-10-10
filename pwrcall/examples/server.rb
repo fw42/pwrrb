@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-require File.dirname(__FILE__) + '/../pwrcall.rb'
+require File.expand_path("/../pwrcall.rb", __FILE__)
 
 class Stuff
 	def add(a,b)

@@ -3,9 +3,9 @@ require 'eventmachine'
 require 'forwardable'
 require 'em-systemcommand'
 require 'fiber'
-require File.dirname(__FILE__) + '/pwrtools/pwrlogger.rb'
-require File.dirname(__FILE__) + '/pwrtools/pwrconnection.rb'
-require File.dirname(__FILE__) + '/pwrtools/pwrunpackers.rb'
+require File.expand_path("../pwrtools/pwrlogger.rb", __FILE__)
+require File.expand_path("../pwrtools/pwrconnection.rb", __FILE__)
+require File.expand_path("../pwrtools/pwrunpackers.rb", __FILE__)
 
 class Pwr
 	def self.run(&block)

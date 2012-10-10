@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # more requires at the bottom
-require File.dirname(__FILE__) + '/pwrlogger.rb'
+require File.expand_path("../pwrlogger.rb", __FILE__)
 
 class PwrUnpacker
 	@@unpackers = {}
