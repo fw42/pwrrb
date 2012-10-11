@@ -27,6 +27,7 @@ You will need at least the following Ruby gems:
 TODO
 ----
 * pwrtls
+    * knownhosts/authorizedkeys authentication (on both sides)
     * verify all crypto boxes and keys
     * increment lnonce in keyfile (open, read, write, close; all in getlnonce method)
 * pwrtools
