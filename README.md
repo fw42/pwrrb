@@ -28,8 +28,7 @@ TODO
 ----
 * pwrtls
     * verify all crypto boxes and keys
-    * increment lnonce in keyfile
-    * what happens when two servers are running at the same time? (lnonce race condition?)
+    * increment lnonce in keyfile (open, read, write, close; all in getlnonce method)
 * pwrtools
     * logger
         * prefix all server log output with client number
