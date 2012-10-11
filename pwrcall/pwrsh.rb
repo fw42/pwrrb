@@ -33,10 +33,11 @@ Pwr.run do
 			pwr = obj = nil
 
 			if options[:listen]
-				node.listen_plain("0.0.0.0", 10004)
+				pwr = []
+				node.listen_plain("0.0.0.0", 10004) { |p| pwr << p }
 				node.listen_pwrtls("0.0.0.0", 10005,
 					File.expand_path("../examples/example_server_keypair", __FILE__)
-				)
+				) { |p| pwr << p }
 			end
 
 			if options[:url]

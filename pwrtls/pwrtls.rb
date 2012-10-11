@@ -96,6 +96,10 @@ module PwrConnectionHandlerPwrTLS
 		send_encrypted(data)
 	end
 
+	def get_peer()
+		[ @peer[:port], @peer[:ip] ]
+	end
+
 	######
 
 	private

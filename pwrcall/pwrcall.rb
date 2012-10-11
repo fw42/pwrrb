@@ -200,7 +200,7 @@ class PwrCallConnection < PwrConnection
 	public
 
 	def connection_established()
-		@peer = Socket.unpack_sockaddr_in(@connection_handler.get_peername)
+		@peer = @connection_handler.get_peer()
 		send_hello()
 	end
 
@@ -367,12 +367,16 @@ module PwrConnectionHandlerPlain
 		send_data(data)
 	end
 
+	def get_peer()
+		Socket.unpack_sockaddr_in(get_peername)
+	end
+
 	######
 
 	private
 
 	def print_connected_msg()
-		@peer = Socket.unpack_sockaddr_in(get_peername)
+		@peer = get_peer()
 		$logger.info("Plain connection with #{@peer[1]}:#{@peer[0]} established") if @peer
 	end
 
