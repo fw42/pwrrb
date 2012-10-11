@@ -20,6 +20,12 @@ module URI
 	end
 end
 
+module PwrClassPublic
+	def show_all_methods
+		(self.methods - Object.methods - [:show_all_methods]).map{ |m| m.to_s }
+	end
+end
+
 class PwrCallProxy
 	def initialize(node, proxy_ref)
 		@node = node
@@ -300,11 +306,7 @@ class PwrCallConnection < PwrConnection
 		if obj = @node.obj(ref)
 			if obj.respond_to?(fn) or obj.class == PwrObj
 				Fiber.new{
-					### Monkey patching magic, add instance variable to object at runtime :-)
-					class << obj
-						attr_accessor :pwrcall_current_connection
-					end
-					obj.pwrcall_current_connection = self
+					obj.instance_variable_set(:@pwrcall_current_connection, self)
 					begin
 						send_response(msgid, obj.send(fn, *params))
 					rescue => errormsg

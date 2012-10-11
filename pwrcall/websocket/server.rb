@@ -3,6 +3,8 @@ require File.expand_path("../../pwrcall.rb", __FILE__)
 require File.expand_path("../pwrws.rb", __FILE__)
 
 class Example
+	include PwrClassPublic
+
 	def add(*args)
 		args.inject(&:+)
 	end
