@@ -10,6 +10,10 @@ class Example
 	def hello
 		"Hello World!"
 	end
+
+	def callme(ref, fn, *args)
+		@pwrcall_current_connection.call(ref, fn, *args).result()
+	end
 end
 
 $logger.level = Logger::DEBUG

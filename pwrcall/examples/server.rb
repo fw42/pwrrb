@@ -11,8 +11,8 @@ class Stuff
 		return "Slept for #{n} seconds"
 	end
 
-	def callme(ref, *args)
-		@pwrcall_current_connection.call(ref, *args).result()
+	def callme(ref, fn, *args)
+		@pwrcall_current_connection.call(ref, fn, *args).result()
 	end
 
 	def exec(cmd)
