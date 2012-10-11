@@ -9,9 +9,9 @@ module URI
 		COMPONENT = [ :scheme, :userinfo, :host, :port, :path ]
 		@@schemes['PWRCALL'] = PWRCALL
 
-		def capability()
-			cap = self.path.gsub(/^\//, "").gsub(/\/$/, "")
-			cap == "" ? nil : cap
+		def ref()
+			ref = self.path.gsub(/^\//, "").gsub(/\/$/, "")
+			ref == "" ? nil : ref
 		end
 
 		def fingerprint()
@@ -20,14 +20,39 @@ module URI
 	end
 end
 
-class PwrObj
-	def initialize(pwrcon, capability)
+class PwrCallProxy
+	def initialize(node, proxy_ref)
+		@node = node
+		@proxy_ref = proxy_ref
+		@node.register(self, proxy_ref)
+	end
+
+	def register(obj_ref)
+		@node.register(PwrObjProxied.new(@pwrcall_current_connection, @proxy_ref, obj_ref), obj_ref)
+		return true
+	end
+end
+
+class PwrObjProxied
+	def initialize(pwrcon, proxy_ref, obj_ref)
 		@pwrcon = pwrcon
-		@capability = capability
+		@proxy_ref = proxy_ref
+		@obj_ref = obj_ref
 	end
 
 	def method_missing(m, *args)
-		@pwrcon.call(@capability, m, *args).result()
+		@pwrcon.call(@obj_ref, m, *args).result()
+	end
+end
+
+class PwrObj
+	def initialize(pwrcon, ref)
+		@pwrcon = pwrcon
+		@ref = ref
+	end
+
+	def method_missing(m, *args)
+		@pwrcon.call(@ref, m, *args).result()
 	end  
 end
 
@@ -67,12 +92,12 @@ class PwrNode
 	def open_url(url, packers=nil, pwrtls=true)
 		url = URI(url) if url.class == String
 
-		### Do we already know this capability?
-		if url.capability and @extern[url.capability] and @conns[[url.host, url.port]]
-			return @extern[url.capability], @conns[[url.host, url.port]]
+		### Do we already know this ref?
+		if url.ref and @extern[url.ref] and @conns[[url.host, url.port]]
+			return @extern[url.ref], @conns[[url.host, url.port]]
 		end
 
-		### Do we already know this connection (possibly in combination with another capability)?
+		### Do we already know this connection (possibly in combination with another ref)?
 		if @conns[[url.host, url.port]] == nil
 			if pwrtls
 				@conns[[url.host, url.port]] = connect_pwrtls(url.host, url.port, packers, nil, url.fingerprint)
@@ -81,16 +106,16 @@ class PwrNode
 			end
 		end
 
-		if url.capability
-			@extern[url.capability] = PwrObj.new(@conns[[url.host, url.port]], url.capability)
-			return @extern[url.capability], @conns[[url.host, url.port]]
+		if url.ref
+			@extern[url.ref] = PwrObj.new(@conns[[url.host, url.port]], url.ref)
+			return @extern[url.ref], @conns[[url.host, url.port]]
 		else
 			return nil, @conns[[url.host, url.port]]
 		end
 	end
 
-	def open_cap(cap, con)
-		@extern[cap] = @extern[cap] || PwrObj.new(con, cap)
+	def open_ref(ref, con)
+		@extern[ref] = @extern[ref] || PwrObj.new(con, ref)
 	end
 
 	def listen(server, port, handler, packers=nil, keypair=nil, &block)
@@ -191,8 +216,8 @@ class PwrCallConnection < PwrConnection
 		return @pending[@msgid-1]
 	end
 
-	def open_cap(cap)
-		@node.open_cap(cap, self)
+	def open_ref(ref)
+		@node.open_ref(ref, self)
 	end
 
 	######
@@ -285,7 +310,7 @@ class PwrCallConnection < PwrConnection
 	def handle_request(msgid, ref, fn, params)
 		$logger.info("Incoming req.: <#{msgid}> #{ref}.#{fn}(#{params.inspect[1..-2]})")
 		if obj = @node.obj(ref)
-			if obj.respond_to?(fn)
+			if obj.respond_to?(fn) or obj.class == PwrObjProxied
 				Fiber.new{
 					### Monkey patching magic, add instance variable to object at runtime :-)
 					class << obj

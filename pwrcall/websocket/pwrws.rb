@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-require File.expand_path("../../../pwrcall.rb", __FILE__)
+require File.expand_path("../../pwrcall.rb", __FILE__)
 
 require 'rack/file'
 require File.expand_path('../lib/faye/websocket', __FILE__)
@@ -62,7 +62,6 @@ class PwrConnectionHandlerWebSocket
 	public
 
 	def get_peer
-		puts @sock.env
 		[ @sock.env['REMOTE_PORT'], @sock.env['REMOTE_ADDR'] ]
 	end
 
