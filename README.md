@@ -26,8 +26,6 @@ You will need at least the following Ruby gems:
 
 TODO
 ----
-* pwrcall
-    * proxy support
 * pwrtls
     * verify all crypto boxes and keys
     * increment lnonce in keyfile
