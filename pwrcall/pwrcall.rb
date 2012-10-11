@@ -23,25 +23,13 @@ end
 class PwrCallProxy
 	def initialize(node, proxy_ref)
 		@node = node
-		@proxy_ref = proxy_ref
+#		@proxy_ref = proxy_ref
 		@node.register(self, proxy_ref)
 	end
 
 	def register(obj_ref)
-		@node.register(PwrObjProxied.new(@pwrcall_current_connection, @proxy_ref, obj_ref), obj_ref)
+		@node.register(PwrObj.new(@pwrcall_current_connection, obj_ref), obj_ref)
 		return true
-	end
-end
-
-class PwrObjProxied
-	def initialize(pwrcon, proxy_ref, obj_ref)
-		@pwrcon = pwrcon
-		@proxy_ref = proxy_ref
-		@obj_ref = obj_ref
-	end
-
-	def method_missing(m, *args)
-		@pwrcon.call(@obj_ref, m, *args).result()
 	end
 end
 
@@ -310,7 +298,7 @@ class PwrCallConnection < PwrConnection
 	def handle_request(msgid, ref, fn, params)
 		$logger.info("Incoming req.: <#{msgid}> #{ref}.#{fn}(#{params.inspect[1..-2]})")
 		if obj = @node.obj(ref)
-			if obj.respond_to?(fn) or obj.class == PwrObjProxied
+			if obj.respond_to?(fn) or obj.class == PwrObj
 				Fiber.new{
 					### Monkey patching magic, add instance variable to object at runtime :-)
 					class << obj
