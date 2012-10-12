@@ -26,6 +26,12 @@ You will need at least the following Ruby gems:
 
 TODO
 ----
+* pwrcall
+    * standardized error messages, etc.
+    * base64 capabilities (print URL on console)
+    * auto-detect if connection uses pwrtls or not
+    * method decoraters
+    * dont allow to call Object methods on exposed objects
 * pwrtls
     * knownhosts/authorizedkeys authentication (on both sides)
     * verify all crypto boxes and keys
@@ -35,3 +41,4 @@ TODO
         * prefix all server log output with client number
         * finer debug levels
 * documentation
+    * install howto, Gemfile, packaging, etc.

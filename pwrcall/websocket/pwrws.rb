@@ -48,6 +48,10 @@ class PwrConnectionHandlerWebSocket
 		@sock.send(data)
 	end
 
+	def get_peer
+		[ @sock.env['REMOTE_PORT'], @sock.env['REMOTE_ADDR'] ]
+	end
+
 	######
 
 	private
@@ -60,10 +64,6 @@ class PwrConnectionHandlerWebSocket
 	###### Callbacks
 
 	public
-
-	def get_peer
-		[ @sock.env['REMOTE_PORT'], @sock.env['REMOTE_ADDR'] ]
-	end
 
 	def receive_data(event)
 		@conn.receive_data(event.data)
