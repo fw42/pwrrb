@@ -51,6 +51,14 @@ Pwr.run do
 				proc { |obj, nest_level| "pwr> " },
 				proc { |obj, nest_level| "pwr> " }
 			]
+
+			### Prevent async log messages from screwing up the Pry readline
+			pry_original_print = Pry.config.print
+			Pry.config.print = Proc.new do |out,val|
+				printf "\r"
+				pry_original_print.call(out,val)
+			end
+
 			binding.pry({ :quiet => true })
 		end
 	}.resume().wait()

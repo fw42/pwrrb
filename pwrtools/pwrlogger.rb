@@ -19,5 +19,11 @@ if $logger == nil
 		end
 #		puts "#{datetime.strftime("%H:%M:%S")} [#{level}] #{msg}"
 		puts "\r[#{level}] #{msg}"
+
+		### Prevent async log messages from screwing up the Pry readline
+		if Module.const_defined?("RbReadline")
+			RbReadline.rl_refresh_line(nil,nil)
+		end
+		""
 	end
 end
