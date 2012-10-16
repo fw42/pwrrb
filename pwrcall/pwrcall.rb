@@ -331,7 +331,14 @@ class PwrCallConnection < PwrConnection
 				Fiber.new{
 					obj.instance_variable_set(:@pwrcall_current_connection, self)
 					begin
-						send_response(msgid, obj.send(fn, *params))
+						if obj.class == PwrObj
+							### We should not use obj.send() here because this will also call
+							### methods of parent classes (including the eval method!)
+							send_response(msgid, obj.method_missing(fn, *params))
+						else
+							### It's fine here because we checked with respond_to? before
+							send_response(msgid, obj.send(fn, *params))
+						end
 					rescue => errormsg
 						send_error(msgid, errormsg.inspect)
 					end
