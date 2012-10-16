@@ -30,7 +30,7 @@ end
 thin = Rack::Handler.get('thin')
 node = PwrNode.new()
 reqh = WebRequestHandler.new(node)
-PwrCallProxy.new(node, "proxy")
+proxy = PwrCallProxy.new(node, "proxy")
 
 node.register Example.new, "example"
 

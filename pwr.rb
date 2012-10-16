@@ -79,7 +79,12 @@ class Pwr
 			pry_original_print.call(out,val)
 			$pry_blocked = false
 		end
-
+		pry_original_exception_handler = Pry.config.exception_handler
+		Pry.config.exception_handler = Proc.new do |out,val|
+			printf "\r"
+			pry_original_exception_handler.call(out,val)
+			$pry_blocked = false
+		end
 		Pry.config.hooks.add_hook(:after_read, :fix_line_stuff) do
 			$pry_blocked = true
 		end
