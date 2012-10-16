@@ -2,6 +2,8 @@
 require File.expand_path("../../pwrcall.rb", __FILE__)
 
 class Example
+	_pwr_expose :hello
+
 	def hello(*args)
 		peer = "%s:%s" % @pwrcall_current_connection.peer.reverse
 		puts "#{peer} called hello() on me with parameters: #{args.inspect}"
@@ -10,7 +12,6 @@ class Example
 end
 
 Pwr.run do
-
 	node = PwrNode.new()
 	node.register(Example.new, "example")
 	obj, pwr = node.open_url("pwrcall://21bc7f3c3956e5aa04a6dc33fea9d2b913b4157c@localhost:10005/foobar")
@@ -44,5 +45,4 @@ Pwr.run do
 	f1.wait()
 	f2.wait()
 	Pwr.stop
-
 end

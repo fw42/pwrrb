@@ -154,7 +154,8 @@ class PwrNode
 end
 
 class PwrResult
-	def initialize()
+	def initialize(cache=true)
+		@cache = cache
 		@fiber = Fiber.current
 	end
 
@@ -182,7 +183,7 @@ class PwrResult
 
 	private
 	def resume(r)
-		if @yield
+		if @yield or !@cache
 			@fiber.resume(r) if @fiber.alive?
 		else
 			@cached = r
@@ -193,7 +194,7 @@ end
 
 class PwrFiber < Fiber
 	def initialize(&block)
-		@r = PwrResult.new()
+		@r = PwrResult.new(false)
 		super do
 			block.yield
 			@r.set()

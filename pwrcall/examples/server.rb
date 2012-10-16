@@ -2,6 +2,8 @@
 require File.expand_path("../../pwrcall.rb", __FILE__)
 
 class Stuff
+	_pwr_expose :add, :sleep, :callme, :exec
+
 	def add(*args)
 		args.inject(&:+)
 	end
