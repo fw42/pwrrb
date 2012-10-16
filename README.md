@@ -30,8 +30,6 @@ TODO
     * standardized error messages, etc.
     * base64 capabilities (print URL on console)
     * auto-detect if connection uses pwrtls or not
-    * method decoraters
-    * dont allow to call Object methods on exposed objects
 * pwrsh
     * pry kills stty return key  
 * pwrtls

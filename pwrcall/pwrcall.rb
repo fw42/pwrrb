@@ -20,9 +20,19 @@ module URI
 	end
 end
 
-module PwrClassPublic
-	def show_all_methods
-		(self.methods - Object.methods - [:show_all_methods]).map{ |m| m.to_s }
+class Module
+	def _pwr_expose(*new)
+		list = []
+		if class_variable_defined?(:@@_pwr_exposed) then
+			list = class_variable_get(:@@_pwr_exposed)
+		end
+		class_variable_set :@@_pwr_exposed, list.concat(new.map(&:to_s)).uniq
+
+		unless self.methods.include?(:_pwr_exposed)
+			define_method :_pwr_exposed do
+				self.class.class_variable_get :@@_pwr_exposed
+			end
+		end
 	end
 end
 
@@ -324,20 +334,29 @@ class PwrCallConnection < PwrConnection
 		end
 	end
 
+	def method_allowed?(obj, fn)
+		obj.respond_to?(fn) and obj.class.class_variable_defined?(:@@_pwr_exposed) and
+			obj.class.class_variable_get(:@@_pwr_exposed).class == Array and
+			obj.class.class_variable_get(:@@_pwr_exposed).include?(fn)
+	end
+
 	def handle_request(msgid, ref, fn, params)
 		$logger.info("Incoming req.: <#{msgid}> #{ref}.#{fn}(#{params.inspect[1..-2]})")
 		if obj = @node.obj(ref)
-			if obj.respond_to?(fn) or obj.class == PwrObj
+			if method_allowed?(obj, fn) or obj.class == PwrObj
 				Fiber.new{
 					obj.instance_variable_set(:@pwrcall_current_connection, self)
 					begin
-						if obj.class == PwrObj
+						if method_allowed?(obj, fn)
+							send_response(msgid, obj.send(fn, *params))
+						elsif obj.class == PwrObj
 							### We should not use obj.send() here because this will also call
 							### methods of parent classes (including the eval method!)
 							send_response(msgid, obj.method_missing(fn, *params))
 						else
-							### It's fine here because we checked with respond_to? before
-							send_response(msgid, obj.send(fn, *params))
+							$logger.fatal("Something went wrong.")
+							unbind()
+							return
 						end
 					rescue => errormsg
 						send_error(msgid, errormsg.inspect)

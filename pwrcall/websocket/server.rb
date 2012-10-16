@@ -3,7 +3,8 @@ require File.expand_path("../../pwrcall.rb", __FILE__)
 require File.expand_path("../pwrws.rb", __FILE__)
 
 class Example
-	include PwrClassPublic
+	_pwr_expose :add, :hello, :callme, :sleep, :sleep_callme
+	_pwr_expose :_pwr_exposed
 
 	def add(*args)
 		args.inject(&:+)
