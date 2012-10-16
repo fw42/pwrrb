@@ -138,7 +138,12 @@ class PwrResult
 	end
 
 	def result()
-		Fiber.yield
+		if @cached
+			return @cached
+		else
+			@yield = true
+			Fiber.yield
+		end
 	end
 
 	def error()
@@ -156,7 +161,12 @@ class PwrResult
 
 	private
 	def resume(r)
-		@fiber.resume(r) if @fiber.alive?
+		if @yield
+			@fiber.resume(r) if @fiber.alive?
+		else
+			@cached = r
+		end
+		return r
 	end
 end
 

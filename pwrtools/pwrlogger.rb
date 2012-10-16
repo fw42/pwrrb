@@ -18,12 +18,20 @@ if $logger == nil
 			level = level.red
 		end
 #		puts "#{datetime.strftime("%H:%M:%S")} [#{level}] #{msg}"
+
+		### Prevent async log messages from screwing up the Pry readline
+		if defined?(Pry) and Module.const_defined?("RbReadline")
+			RbReadline.rl_kill_full_line(0,nil)
+		end
+
 		puts "\r[#{level}] #{msg}"
 
 		### Prevent async log messages from screwing up the Pry readline
-		if Module.const_defined?("RbReadline")
+		### this is getting annoying :-(
+		if defined?(Pry) and Module.const_defined?("RbReadline") and !$pry_blocked
 			RbReadline.rl_refresh_line(nil,nil)
 		end
+
 		""
 	end
 end

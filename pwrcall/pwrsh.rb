@@ -57,6 +57,14 @@ Pwr.run do
 			Pry.config.print = Proc.new do |out,val|
 				printf "\r"
 				pry_original_print.call(out,val)
+				$pry_blocked = false
+			end
+
+			Pry.config.hooks.add_hook(:after_read, :fix_line_stuff) do
+#				puts "foo"
+#				printf "\b\b\bfoo"
+#				RbReadline.rl_kill_full_line(0,nil)
+				$pry_blocked = true
 			end
 
 			binding.pry({ :quiet => true })

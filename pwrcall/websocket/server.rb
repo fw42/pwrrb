@@ -16,6 +16,15 @@ class Example
 	def callme(ref, fn, *args)
 		@pwrcall_current_connection.call(ref, fn, *args).result()
 	end
+
+	def sleep(n)
+		Pwr.sleep(n)
+	end
+
+	def sleep_callme(*args)
+		sleep(2)
+		callme(*args)
+	end
 end
 
 $logger.level = Logger::DEBUG
