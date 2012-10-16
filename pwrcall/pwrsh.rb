@@ -61,9 +61,6 @@ Pwr.run do
 			end
 
 			Pry.config.hooks.add_hook(:after_read, :fix_line_stuff) do
-#				puts "foo"
-#				printf "\b\b\bfoo"
-#				RbReadline.rl_kill_full_line(0,nil)
 				$pry_blocked = true
 			end
 
