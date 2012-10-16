@@ -33,8 +33,8 @@ class PwrCallProxy
 		@node.register(self, proxy_ref)
 	end
 
-	def register(obj_ref)
-		@node.register(PwrObj.new(@pwrcall_current_connection, obj_ref), obj_ref)
+	def register(obj_ref, conn=@pwrcall_current_connection)
+		@node.register(PwrObj.new(conn, obj_ref), obj_ref)
 		return true
 	end
 end
