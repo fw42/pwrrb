@@ -16,6 +16,7 @@ class WebRequestHandler
 			ws = Faye::WebSocket.new(env)
 			pwrconn = PwrCallConnection.new(@node, nil, true)
 			pwr = PwrConnectionHandlerWebSocket.new(ws, pwrconn)
+			@node.add_conn(pwr.get_peer, pwrconn)
 			ws.rack_response
 		else
 			['REQUEST_PATH', 'REQUEST_URI', 'PATH_INFO'].each do |key|
@@ -49,7 +50,7 @@ class PwrConnectionHandlerWebSocket
 	end
 
 	def get_peer
-		[ @sock.env['REMOTE_PORT'], @sock.env['REMOTE_ADDR'] ]
+		[ @sock.env['HTTP_SEC_WEBSOCKET_KEY'], @sock.env['REMOTE_ADDR'] ]
 	end
 
 	######

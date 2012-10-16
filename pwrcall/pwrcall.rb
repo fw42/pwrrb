@@ -51,6 +51,16 @@ class PwrObj
 end
 
 class PwrNode
+	attr_reader :conns
+
+	def add_conn(key,conn)
+		@conns[key] = conn
+	end
+
+	def del_conn(conn)
+		@conns.delete_if{ |k,v| v == conn }
+	end
+
 	def initialize()
 		@exports = {}
 		@extern = {}
@@ -117,6 +127,7 @@ class PwrNode
 			pwrconn = PwrCallConnection.new(self, packers, true)
 			c.set_connection(pwrconn)
 			c.server_accepted()
+			@conns[c.get_peer] = pwrconn
 			block.yield(pwrconn) if block
 		end
 		$logger.info("Listening on #{server}:#{port} (#{handler.to_s.gsub(/^PwrConnectionHandler/, "")})")
@@ -274,6 +285,8 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def unbind()
+		@node.del_conn(self)
+
 		### PwrCall connetion was okay before, now closing
 		if @peer and @ready
 			$logger.info("PwrCall connection with #{@peer[1]}:#{@peer[0]} closed")
