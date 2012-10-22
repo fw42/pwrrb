@@ -37,6 +37,8 @@ class Module
 end
 
 class PwrCallProxy
+	_pwr_expose :register
+
 	def initialize(node, proxy_ref)
 		@node = node
 #		@proxy_ref = proxy_ref
