@@ -1,7 +1,7 @@
 // vim:ft=javascript:et:ts=2:sw=2:
 
 var Socket = window.MozWebSocket || window.WebSocket;
-var socket = new Socket("ws://localhost:3000");
+var socket = new Socket("ws://localhost:3001");
 
 // Bind socket methods
 socket.addEventListener('open', function() {
@@ -103,15 +103,18 @@ function pwr_call_handler(pwr) {
 
 // ui functioniality
 function send_command() {
-  var command = $("#command").val();
-  pwr_request(0, "example", command);
+  var command = $("#command").val().split(", ");
+  console.log(command);
+  pwr_request.apply(this, command, function() {
+      console.log("Executed function");
+  });
   log(command);
 }
 
 
 // log
 function log(text) {
-  $("div#log ul").prepend($("<li/>").text(text));
+  $("div#log").prepend(text);
 };
 
 function log_calls(method) {
@@ -148,6 +151,10 @@ $(document).ready(function() {
   callbacks = [];
   for(var fct in public_methods) {
     pwr_caps.browser[fct+""] = public_methods[fct];
+  };
+
+  for(var fct in public_methods) {
+    $("#caps ul").append($("<li/>").text(fct));
   };
 
 });

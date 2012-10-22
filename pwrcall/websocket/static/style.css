@@ -1,0 +1,27 @@
+body {
+	font-family: 'Source Sans Pro', sans-serif;
+	padding: 10px;
+	margin: 0px;
+}
+
+h1, h2, h3, h4 {
+	margin-bottom: 0.4em;
+	margin-top: 0.6em;
+}
+
+div#content {
+	float: left;
+}
+
+div#control {
+	float: right;
+	display: inline;
+	max-width: 200px;
+}
+
+div#log {
+	margin-top: 10px;
+	font-size: 0.9em;
+	padding: 2px;
+	border: 1px solid #ababab;
+}
