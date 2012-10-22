@@ -43,4 +43,5 @@ Pwr.run do
 	end
 
 	Pwr.pry(binding)
+	Pwr::stop
 end

@@ -19,12 +19,9 @@ class Pwr
 		begin
 			EventMachine::run do
 				Fiber.new{
-					PwrFiber.new{
-						EM.open_keyboard(NonblockingKeyboard) do
-							block.yield
-						end
-					}.resume().wait()
-					Pwr.stop
+					EM.open_keyboard(NonblockingKeyboard) do
+						block.yield
+					end
 				}.resume()
 			end
 		rescue Interrupt
