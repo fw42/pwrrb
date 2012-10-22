@@ -19,6 +19,8 @@ if $logger == nil
 		end
 #		puts "#{datetime.strftime("%H:%M:%S")} [#{level}] #{msg}"
 
+		puts if $pry_blocked
+
 		### More fixes for readlines which are longer than incoming logs
 		if defined?(Pry) and Module.const_defined?("RbReadline")
 			printf "\b" * RbReadline.rl_line_buffer.length
