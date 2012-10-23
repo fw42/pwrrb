@@ -2,6 +2,7 @@
 require File.expand_path("../../pwr.rb", __FILE__)
 require File.expand_path("../../pwrtls/pwrtls.rb", __FILE__)
 
+require 'base64'
 require 'uri'
 module URI
 	class PWRCALL < Generic
@@ -11,6 +12,7 @@ module URI
 
 		def ref()
 			ref = self.path.gsub(/^\//, "").gsub(/\/$/, "")
+			ref = Base64.decode64(ref)
 			ref == "" ? nil : ref
 		end
 
@@ -80,6 +82,7 @@ class PwrNode
 	end
 
 	def register(obj, ref)
+		$logger.info("Registered new ref \"#{Base64.encode64(ref).chomp}\" (class #{obj.class})")
 		@exports[ref] = obj
 	end
 
@@ -374,10 +377,11 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def handle_response(msgid, error, result)
-		$logger.info("Incoming res.: <#{msgid}> #{[error, result].inspect}")
 		if error
+			$logger.warn("Incoming err.: <#{msgid}> #{[error, result].inspect}")
 			@pending[msgid].set_error(error)
 		else
+			$logger.info("Incoming res.: <#{msgid}> #{result.inspect}")
 			@pending[msgid].set(result)
 		end
 	end
@@ -397,7 +401,7 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def send_error(msgid, error)
-		$logger.info("Outgoing err.: <#{msgid}> #{error.inspect}")
+		$logger.warn("Outgoing err.: <#{msgid}> #{error.inspect}")
 		send(@packer.pack([ OP[:response], msgid, error, nil ]))
 	end
 

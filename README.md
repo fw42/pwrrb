@@ -28,7 +28,6 @@ TODO
 ----
 * pwrcall
     * standardized error messages, etc.
-    * base64 capabilities (print URL on console)
     * auto-detect if connection uses pwrtls or not
 * pwrsh
     * pry kills stty return key  
