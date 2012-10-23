@@ -59,8 +59,13 @@ class Pwr
 	end
 
 	def self.pry(local_binding)
-		unless defined?(Pry) and defined?(RbReadline)
+		unless defined?(Pry)
 			$logger.warn("Pry not available")
+			return
+		end
+
+		unless defined?(RbReadline)
+			$logger.warn("RbReadline not available")
 			return
 		end
 

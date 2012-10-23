@@ -108,8 +108,9 @@ class PwrNode
 		connect(server, port, PwrConnectionHandlerPwrTLS, packers, keypair, fingerprint)
 	end
 
-	def open_url(url, packers=nil, pwrtls=true)
+	def open_url(url, packers=nil)
 		url = URI(url) if url.class == String
+		pwrtls = (url.fingerprint != "plain")
 
 		### Do we already know this ref?
 		if url.ref and @extern[url.ref] and @conns[[url.host, url.port]]

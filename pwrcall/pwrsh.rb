@@ -36,10 +36,7 @@ Pwr.run do
 	end
 
 	if options[:url]
-		if options[:plain] and URI(options[:url]).port == URI::PWRCALL::DEFAULT_PORT
-			$logger.warn("Sure that you use the right port?")
-		end
-		obj, pwr = node.open_url(options[:url], nil, !options[:plain])
+		obj, pwr = node.open_url(options[:url], nil)
 	end
 
 	Pwr.pry(binding)
