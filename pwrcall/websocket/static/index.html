@@ -9,19 +9,9 @@
   <link href='style.css' rel='stylesheet' type='text/css'>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js" type="text/javascript"></script>
   <script type="text/javascript" src="index.js"></script>
-  <title>WebSocket test</title>
+  <title>pwrjs - Secure RPC over WebSockets</title>
 </head>
 <body>
-
-<div id="content">
-<h1>WebSocket test</h1>
-<p>
-<i>Secure web-enabled end-to-end RPC based on capabilites</i>
-</p>
-  <div id="log" style="height: 200px; overflow: auto;">
-  </div>
-  <small>websocket log</small>
-</div>
 
 <div id="control">
   <h2>pwrcontrol</h2>
@@ -36,14 +26,24 @@
     </ul>
   </div>
 
-  <div id="command">
+  <div id="console">
     <h4>Command</h4>
     <input type="text" id="command"><br/>
-    <input type="submit" onclick="send_command()">
+    <input type="submit" onClick="send_command();">
+    <br/><b>Example</b><br/>
+    <small><tt onclick="$('input#command').val($(this).text());">example.callme(["browser", "red"])</tt></small>
+
   </div>
 </div>
 
-<div id="output">
+<div id="content">
+<h1>pwrjs - Secure RPC over WebSockets</h1>
+<p>
+<i>Secure web-enabled end-to-end RPC based on capabilites</i>
+</p>
+  <div id="log" style="height: 200px; overflow: auto;">
+  </div>
+  <small>websocket log</small>
 </div>
 
 </body>
