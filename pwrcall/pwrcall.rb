@@ -54,13 +54,15 @@ class PwrCallProxy
 end
 
 class PwrObj
-	def initialize(pwrcon, ref)
-		@pwrcon = pwrcon
+	attr_reader :ref, :con
+
+	def initialize(con, ref)
+		@con = con
 		@ref = ref
 	end
 
 	def method_missing(m, *args)
-		@pwrcon.call(@ref, m, *args).result()
+		@con.call(@ref, m, *args).result()
 	end  
 end
 
@@ -261,6 +263,18 @@ class PwrCallConnection < PwrConnection
 		send_hello()
 	end
 
+	###### Callback handlers
+
+	public
+
+	def on_ready(&block)
+		@ready_callback = block
+	end
+
+	def on_disconnect(&block)
+		@unbind_callback = block
+	end
+
 	###### Callbacks
 
 	public
@@ -281,6 +295,7 @@ class PwrCallConnection < PwrConnection
 					@ready = true
 					@packer = PwrUnpacker.unpackers[cap].new()
 					@fiber.resume(true) unless @server
+					@ready_callback.yield if @ready_callback
 					break
 				end
 				if !@ready
@@ -302,6 +317,8 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def unbind()
+		@unbind_callback.yield if @unbind_callback
+
 		@node.del_conn(self)
 
 		### PwrCall connetion was okay before, now closing
@@ -378,6 +395,10 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def handle_response(msgid, error, result)
+		if @pending[msgid] == nil
+			$logger.error("Incoming response with invalid msgid #{msgid}")
+			return
+		end
 		if error
 			$logger.warn("Incoming err.: <#{msgid}> #{[error, result].inspect}")
 			@pending[msgid].set_error(error)
@@ -402,7 +423,7 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def send_error(msgid, error)
-		$logger.warn("Outgoing err.: <#{msgid}> #{error.inspect}")
+		$logger.info("Outgoing err.: <#{msgid}> #{error.inspect}")
 		send(@packer.pack([ OP[:response], msgid, error, nil ]))
 	end
 
