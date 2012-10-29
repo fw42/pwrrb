@@ -63,7 +63,7 @@ class Pwr
 		Fiber.yield
 	end
 
-	def self.pry(local_binding)
+	def self.pry(local_binding, prompt="pwr> ")
 		unless defined?(Pry)
 			$logger.warn("Pry not available")
 			return
@@ -75,8 +75,8 @@ class Pwr
 		end
 
 		Pry.prompt = [
-			proc { |obj, nest_level| "pwr> " },
-			proc { |obj, nest_level| "pwr> " }
+			proc { |obj, nest_level| prompt },
+			proc { |obj, nest_level| prompt }
 		]
 
 		### Prevent async log messages from screwing up the Pry readline
