@@ -41,14 +41,19 @@ class Pwr
 
 	def self.exec(cmd)
 		f = Fiber.current
-		output = ""
+		output = { stdout: "", stderr: "" }
 		EM::SystemCommand.execute cmd do |on|
 			on.stdout.data do |data|
-				output += data
+				output[:stdout] += data
+			end
+
+			on.stderr.data do |data|
+				output[:stderr] += data
 			end
 
 			on_exit = lambda do |ps|
-				output = output.split("\n") if output
+				output[:stdout] = output[:stdout].split("\n")
+				output[:stderr] = output[:stderr].split("\n")
 				f.resume([ps.status.exitstatus, output])
 			end
 
