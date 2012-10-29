@@ -269,6 +269,7 @@ class PwrCallConnection < PwrConnection
 
 	def on_ready(&block)
 		@ready_callback = block
+		@ready_callback.yield if @ready
 	end
 
 	def on_disconnect(&block)
@@ -294,8 +295,8 @@ class PwrCallConnection < PwrConnection
 					$logger.info("PwrCall connection with #{@peer[1]}:#{@peer[0]} established")
 					@ready = true
 					@packer = PwrUnpacker.unpackers[cap].new()
-					@fiber.resume(true) unless @server
 					@ready_callback.yield if @ready_callback
+					@fiber.resume(true) unless @server
 					break
 				end
 				if !@ready
