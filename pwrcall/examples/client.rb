@@ -14,7 +14,7 @@ end
 Pwr.run do
 	node = PwrNode.new()
 	node.register(Example.new, "example")
-	obj, pwr = node.open_url("pwrcall://21bc7f3c3956e5aa04a6dc33fea9d2b913b4157c@localhost:10005/foobar")
+	obj, pwr = node.open_url("pwrcall://21bc7f3c3956e5aa04a6dc33fea9d2b913b4157c@localhost:10005/Zm9vYmFy")
 
 	# Check if connection failed
 	exit unless pwr
@@ -28,7 +28,7 @@ Pwr.run do
 	# "Thread" 1
 	f1 = PwrFiber.new{
 		# Execute some remote command and get the output
-		puts "Localtime on server: " + obj.exec("sleep 1; date")[1].join
+		puts "Localtime on server: " + obj.exec("sleep 1; date")[1]["stdout"].join
 
 		puts "23 + 42 = %d" % obj.add(23, 42)
 		puts "17 + 42 = %d" % obj.add(17, 42)
