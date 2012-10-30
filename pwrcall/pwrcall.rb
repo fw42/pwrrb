@@ -172,7 +172,7 @@ class PwrResult
 			return @cached
 		else
 			@yield = true
-			Fiber.yield
+			return Fiber.yield
 		end
 	end
 
@@ -202,20 +202,21 @@ end
 
 class PwrFiber < Fiber
 	def initialize(&block)
-		@r = PwrResult.new(false)
+		@waiter = nil
+		@done = false
 		super do
 			block.yield
-			@r.set()
+			if @waiter
+				@waiter.resume
+			end
+			@done = true
 		end
 	end
 
-	def resume(*args)
-		super(*args)
-		return self
-	end
-
 	def wait()
-		@r.result()
+		return if @done
+		@waiter = Fiber.current
+		Fiber.yield
 	end
 end
 
