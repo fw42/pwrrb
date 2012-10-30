@@ -337,6 +337,7 @@ class PwrCallConnection < PwrConnection
 		end
 
 		@ready = false
+		@buf = ""
 		@pending.keys.each do |k|
 			@pending[k].set_error("Connection lost")
 		end
