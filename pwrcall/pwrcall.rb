@@ -92,6 +92,12 @@ class PwrNode
 		@exports[ref]
 	end
 
+	def cleanup()
+		@conns.values.each do |con|
+			con.delete_all_dead_pending()
+		end
+	end
+
 	def connect(server, port, handler, packers=nil, *args)
 		pwrconn = PwrCallConnection.new(self, packers)
 		EventMachine::connect(server, port, handler, pwrconn, *args)
@@ -162,6 +168,8 @@ class PwrNode
 end
 
 class PwrResult
+	attr_reader :fiber
+
 	def initialize(cache=true)
 		@cache = cache
 		@fiber = Fiber.current
@@ -255,6 +263,21 @@ class PwrCallConnection < PwrConnection
 		@node.open_ref(ref, self)
 	end
 
+	def close_all_pending(err = "Connection lost")
+		@pending.keys.each do |k|
+			@pending[k].set_error(err)
+		end
+	end
+
+	def delete_all_dead_pending()
+		@pending.each do |id,res|
+			if res.fiber and !res.fiber.alive?
+				$logger.debug("Deleting pending #{id}")
+				@pending.delete(id)
+			end
+		end
+	end
+
 	######
 
 	public
@@ -339,9 +362,7 @@ class PwrCallConnection < PwrConnection
 
 		@ready = false
 		@buf = ""
-		@pending.keys.each do |k|
-			@pending[k].set_error("Connection lost")
-		end
+		close_all_pending()
 	end
 
 	######
