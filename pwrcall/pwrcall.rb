@@ -232,7 +232,7 @@ class PwrCallConnection < PwrConnection
 	OP = { request: 0, response: 1, notify: 2 }
 	VERSION = "pwrcallrb_v0.1"
 
-	attr_reader :server, :peer
+	attr_reader :server, :peer, :ready
 
 	public
 
