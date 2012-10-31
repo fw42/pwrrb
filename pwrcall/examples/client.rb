@@ -33,13 +33,17 @@ Pwr.run do
 		puts "23 + 42 = %d" % obj.add(23, 42)
 		puts "17 + 42 = %d" % obj.add(17, 42)
 		puts obj.callme("example", "hello", "one", [ "two" ], { three: true })
-	}.resume()
+	}
 
 	# "Thread" 2
 	f2 = PwrFiber.new{
 		puts "17 + 5 = #{pwr.call("foobar", "add", 17, 5).result()}"
 		puts "string concat = #{pwr.call("foobar", "add", "string", "concat").result()}"
-	}.resume()
+	}
+
+	# Start fibers
+	f1.resume()
+	f2.resume()
 
 	# Wait for Fibers to finish
 	f1.wait()
