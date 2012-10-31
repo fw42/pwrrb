@@ -30,6 +30,7 @@ TODO
     * standardized error messages, etc.
     * auto-detect if connection uses pwrtls or not
 * pwrsh
+    * log messages overwrite prompt when previous command was silent (";" at end or just "\n")
     * pry kills stty return key  
 * pwrtls
     * knownhosts/authorizedkeys authentication (on both sides)
