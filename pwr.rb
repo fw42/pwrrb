@@ -50,6 +50,7 @@ class Pwr
 					output[:info] << "Timeout waiting for process to exit (#{timeout}s)"
 					begin
 						Process.kill 'TERM', on.pid
+						output[:timeout] = true
 						[ :stdin, :stderr, :stdout ].each do |fd|
 							on.send(fd).close_connection
 						end
@@ -68,8 +69,6 @@ class Pwr
 			end
 
 			on_exit = lambda do |ps|
-				output[:stdout] = output[:stdout].split("\n")
-				output[:stderr] = output[:stderr].split("\n")
 				timer.cancel if timer
 				f.resume([ps.status.exitstatus || (128 + ps.status.termsig), output])
 			end
