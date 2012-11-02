@@ -39,10 +39,26 @@ class Pwr
 		Fiber.yield
 	end
 
-	def self.exec(cmd)
+	def self.exec(cmd, timeout=nil)
 		f = Fiber.current
 		output = { stdout: "", stderr: "" }
 		EM::SystemCommand.execute cmd do |on|
+			if timeout
+				timer = EM::Timer.new(timeout) do
+					$logger.warn("Sending SIGTERM to #{on.pid} after #{timeout}s timeout.")
+					output[:info] = [] unless output[:info]
+					output[:info] << "Timeout waiting for process to exit (#{timeout}s)"
+					begin
+						Process.kill 'TERM', on.pid
+						[ :stdin, :stderr, :stdout ].each do |fd|
+							on.send(fd).close_connection
+						end
+					rescue Errno::ESRCH => err
+						$logger.warn("Failed to TERM process #{on.pid}: #{err.to_s}")
+					end
+				end
+			end
+
 			on.stdout.data do |data|
 				output[:stdout] += data
 			end
@@ -54,11 +70,16 @@ class Pwr
 			on_exit = lambda do |ps|
 				output[:stdout] = output[:stdout].split("\n")
 				output[:stderr] = output[:stderr].split("\n")
-				f.resume([ps.status.exitstatus, output])
+				timer.cancel if timer
+				f.resume([ps.status.exitstatus || (128 + ps.status.termsig), output])
 			end
 
 			on.success do |ps| on_exit.call(ps) end
-			on.failure do |ps| on_exit.call(ps) end
+			on.failure do |ps|
+				output[:info] = [] unless output[:info]
+				output[:info] << ps.status.to_s
+				on_exit.call(ps)
+			end
 		end
 		Fiber.yield
 	end
