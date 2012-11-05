@@ -54,13 +54,15 @@ class PwrCallProxy
 end
 
 class PwrObj
-	def initialize(pwrcon, ref)
-		@pwrcon = pwrcon
+	attr_reader :ref, :con
+
+	def initialize(con, ref)
+		@con = con
 		@ref = ref
 	end
 
 	def method_missing(m, *args)
-		@pwrcon.call(@ref, m, *args).result()
+		@con.call(@ref, m, *args).result()
 	end  
 end
 
@@ -88,6 +90,12 @@ class PwrNode
 
 	def obj(ref)
 		@exports[ref]
+	end
+
+	def cleanup()
+		@conns.values.each do |con|
+			con.delete_all_dead_pending()
+		end
 	end
 
 	def connect(server, port, handler, packers=nil, *args)
@@ -164,6 +172,8 @@ class PwrNode
 end
 
 class PwrResult
+	attr_reader :fiber
+
 	def initialize(cache=true)
 		@cache = cache
 		@fiber = Fiber.current
@@ -204,20 +214,21 @@ end
 
 class PwrFiber < Fiber
 	def initialize(&block)
-		@r = PwrResult.new(false)
+		@waiter = nil
+		@done = false
 		super do
 			block.yield
-			@r.set()
+			if @waiter
+				@waiter.resume
+			end
+			@done = true
 		end
 	end
 
-	def resume(*args)
-		super(*args)
-		return self
-	end
-
 	def wait()
-		@r.result()
+		return if @done
+		@waiter = Fiber.current
+		Fiber.yield
 	end
 end
 
@@ -225,7 +236,7 @@ class PwrCallConnection < PwrConnection
 	OP = { request: 0, response: 1, notify: 2 }
 	VERSION = "pwrcallrb_v0.1"
 
-	attr_reader :server, :peer
+	attr_reader :server, :peer, :ready
 
 	public
 
@@ -256,6 +267,21 @@ class PwrCallConnection < PwrConnection
 		@node.open_ref(ref, self)
 	end
 
+	def close_all_pending(err = "Connection lost")
+		@pending.keys.each do |k|
+			@pending[k].set_error(err)
+		end
+	end
+
+	def delete_all_dead_pending()
+		@pending.each do |id,res|
+			if res.fiber and !res.fiber.alive?
+				$logger.debug("Deleting pending #{id}")
+				@pending.delete(id)
+			end
+		end
+	end
+
 	######
 
 	public
@@ -263,6 +289,19 @@ class PwrCallConnection < PwrConnection
 	def connection_established()
 		@peer = @connection_handler.get_peer()
 		send_hello()
+	end
+
+	###### Callback handlers
+
+	public
+
+	def on_ready(&block)
+		@ready_callback = block
+		@ready_callback.yield if @ready
+	end
+
+	def on_disconnect(&block)
+		@unbind_callback = block
 	end
 
 	###### Callbacks
@@ -284,6 +323,7 @@ class PwrCallConnection < PwrConnection
 					$logger.info("PwrCall connection with #{@peer[1]}:#{@peer[0]} established")
 					@ready = true
 					@packer = PwrUnpacker.unpackers[cap].new()
+					@ready_callback.yield if @ready_callback
 					@fiber.resume(true) unless @server
 					break
 				end
@@ -306,6 +346,8 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def unbind()
+		@unbind_callback.yield if @unbind_callback
+
 		@node.del_conn(self)
 
 		### PwrCall connetion was okay before, now closing
@@ -323,9 +365,8 @@ class PwrCallConnection < PwrConnection
 		end
 
 		@ready = false
-		@pending.keys.each do |k|
-			@pending[k].set_error("Connection lost")
-		end
+		@buf = ""
+		close_all_pending()
 	end
 
 	######
@@ -382,6 +423,10 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def handle_response(msgid, error, result)
+		if @pending[msgid] == nil
+			$logger.error("Incoming response with invalid msgid #{msgid}")
+			return
+		end
 		if error
 			$logger.warn("Incoming err.: <#{msgid}> #{[error, result].inspect}")
 			@pending[msgid].set_error(error)
@@ -406,7 +451,7 @@ class PwrCallConnection < PwrConnection
 	end
 
 	def send_error(msgid, error)
-		$logger.warn("Outgoing err.: <#{msgid}> #{error.inspect}")
+		$logger.info("Outgoing err.: <#{msgid}> #{error.inspect}")
 		send(@packer.pack([ OP[:response], msgid, error, nil ]))
 	end
 

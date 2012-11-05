@@ -1,0 +1,38 @@
+body {
+	font-family: 'Source Sans Pro', sans-serif;
+	padding: 10px;
+	margin: 0px;
+}
+
+h1, h2, h3, h4 {
+	margin-bottom: 0.4em;
+	margin-top: 0.6em;
+}
+
+div#content {
+	display: inline;
+	float: left;
+  margin-left: 50px;
+  max-width: 600px;
+}
+
+div#control {
+	float: left;
+	display: inline;
+	max-width: 400px;
+}
+
+div#log {
+	margin-top: 10px;
+	font-size: 0.9em;
+	padding: 2px;
+	border: 1px solid #ababab;
+  white-space: pre;
+  font-family: monospace;
+  max-width: 100%;
+}
+
+input#command {
+    width: 250px;
+}
+

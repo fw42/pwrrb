@@ -1,128 +1,174 @@
 // vim:ft=javascript:et:ts=2:sw=2:
 
+// globals
 var Socket = window.MozWebSocket || window.WebSocket;
-var socket = new Socket("ws://localhost:3000");
 
-// Bind socket methods
-socket.addEventListener('open', function() {
-  log('OPEN: ' + socket.protocol);
-  setInterval(function() { pwr_request("%ping","ping", []) }, 2000);
-});
+var pwr_ns = function() {
+  this.caps = {};
+  this.callbacks = [];
+  this.msg_id = 0;
 
-socket.onerror = function(event) {
-  log('!! ERROR: ' + event.message);
-};
-
-socket.onmessage = function(event) {
-  if(event.data.indexOf("pwrcall") == 0) {
-    pwr_hello();
-    return;
-  } else {
-    pwr = pwr_parse(event.data);
-    switch(pwr["type"]) {
-      case 0:
-        pwr_call_handler(pwr);
-        return;
-      case 1:
-        pwr_reply_handler(pwr);
-        return;
-      default:
-        log("!! unknown pwrcall message type " + pwr["type"]);
+  // pwr. functions {{{
+  this.add_cap = function(cap, host) {
+    if(!this.caps[cap]) {
+      this.caps[cap] = new this.pwr_cap(cap,host);
     }
   }
-};
 
-socket.onclose = function(event) {
-  log('!! CLOSE: ' + event.code + ', ' + event.reason);
-  socket = new Socket("ws://localhost:3000");
-};
+  this.handle_reply = function (reply) {
+    if(reply.error) {
+      if(!reply.error.match(/%ping/)) {
+        log('<< pwrcall error: ' + reply.error);
+      }
+    } else {
+      log('<< pwrcall reply: ' + reply.result);
+      if("undefined" != typeof this.callbacks[reply.msg_id]) {
+        this.callbacks[reply.msg_id](reply.result);
+      }
+    }
+  };
 
-// pwr functions
-function pwr_hello() {
-  socket.send("pwrcall pwrcalljs_v0.1 - caps: json\n");
-  pwr_request("example","add",[2,3],log);
-};
+  this.hello = function(socket) {
+      socket.send("pwrcall pwrcalljs_v0.1 - caps: json\n");
+  };
 
-function pwr_parse(string) {
-  pwr_array = JSON.parse(string);
-  pwr = {"type": pwr_array[0], "msg_id": pwr_array[1]};
-  switch(pwr["type"]) {
-    case(0):
-      pwr["cap"] = pwr_array[2];
-      pwr["fct"] = pwr_array[3];
-      pwr["args"] = pwr_array[4];
-    case(1):
-      pwr["error"] = pwr_array[2];
-      pwr["result"] = pwr_array[3];
+  this.parse = function(string) {
+    var pwr_array = JSON.parse(string);
+    var pwr_msg = {"type": pwr_array[0], "msg_id": pwr_array[1]};
+    switch(pwr_msg["type"]) {
+      case(0):
+        pwr_msg["cap"] = pwr_array[2];
+        pwr_msg["fct"] = pwr_array[3];
+        pwr_msg["args"] = pwr_array[4];
+      case(1):
+        pwr_msg["error"] = pwr_array[2];
+        pwr_msg["result"] = pwr_array[3];
+    }
+    return pwr_msg;
   }
-  return pwr;
+  // }}}
+
+  // {{{ pwr_cap
+  this.pwr_cap = function(cap, host) {
+    this.cap = cap;
+    this.ws = new pwrsock(host);
+
+    this.pcall = function (fct, args, callback) {
+      if(!fct.match(/ping/))
+        log('>> pwrcall request: ' + fct + "(" + args + ")"); 
+
+      this.ws.socket.send(JSON.stringify([0,pwr.msg_id,this.cap,fct,args]));
+      pwr.callbacks[pwr.msg_id] = callback;
+      pwr.msg_id++;
+    };
+
+    this.reply = function (msg_id, error, result) {
+      log('>> pwrcall reply: ' + result + " (error: " + error + ")"); 
+      this.ws.socket.send(JSON.stringify([1,msg_id,error,result]));
+    };
+
+    this.handle_call = function (msg) {
+      log('<< msgcall request: ' + msg.fct + "(" + msg.args + ")"); 
+        if (this[msg.fct]) {
+          msg_return = this[msg.fct].apply(this,msg.args);
+          this.reply(msg["msg_id"], undefined, msg_return);
+        } else {
+          log("!! I don't have function " + msg.fct);
+        }
+    };
+  }
+  //}}}
+};
+
+var pwr = new pwr_ns();
+
+// websocket functions {{{
+var pwrsock = function(url) {
+
+  // look if another cap has the same WS
+  for(var cap in pwr.caps) {
+    if(pwr.caps[cap] && pwr.caps[cap].ws && (pwr.caps[cap].ws.socket.URL == url)) {
+      this.socket = pwr.caps[cap].ws.socket;
+      break;
+    }
+  }
+
+  if(!this.socket) {
+    this.socket = new Socket(url);
+
+    this.socket.addEventListener('open', function() {
+      log('-- Connected to ' + this.URL);
+      var s = this;
+      setInterval(function() { s.send(JSON.stringify([0, 1, "%ping",["ping"]])) }, 2000);
+    });
+
+    this.socket.onerror = function(event) {
+      log('!! ERROR: ' + event.message);
+    };
+
+    this.socket.onopen = function(event) {
+      $("span#state").text("Connected!");
+    };
+
+    this.socket.onmessage = function(event) {
+      if(event.data.indexOf("pwrcall") == 0) {
+        pwr.hello(this);
+        return;
+      }
+
+      var msg = pwr.parse(event.data);
+      switch(msg["type"]) {
+        case 0:
+          var cap = pwr.caps[msg["cap"]];
+          cap.handle_call(msg);
+          return;
+        case 1:
+          pwr.handle_reply(msg);
+          return;
+        default:
+          log("!! unknown pwrcall message type " + msg["type"]);
+      }
+    };
+
+    this.socket.onclose = function(event) {
+      log('!! CLOSE: ' + event.code + ', ' + event.reason);
+      $("span#state").text("Disconnected...");
+      $("span#state").append($("<input type='submit'/ value='Reconnect'>").attr("onclick", "ws_connect('" + url + "');"));
+    };
+  }
+
 }
 
-function pwr_request(cap, fct, args, callback) {
-  if(!fct.match(/ping/))
-    log('>> pwrcall request: ' + fct + "(" + args + ")"); 
+// }}}
 
-  socket.send(JSON.stringify([0,msg_id,cap,fct,args]));
-  callbacks[msg_id] = callback;
-  msg_id++;
-};
-
-function pwr_reply(msg_id, error, result) {
-  log('>> pwrcall reply: ' + error + " " + result); 
-  socket.send(JSON.stringify([1,msg_id,error,result]));
-};
-
-function pwr_reply_handler(pwr) {
-  if(pwr.error) {
-    if(!pwr.error.match(/%ping/)) {
-      log('<< pwrcall error: ' + pwr.error);
-    }
-  } else {
-    log('<< pwrcall reply: ' + pwr.result);
-    if("undefined" != typeof callbacks[pwr.msg_id]) {
-      //console.log("calling callback " + callbacks[pwr.msg_id]);
-      callbacks[pwr.msg_id](pwr.result);
-    }
-  }
-};
-
-function pwr_call_handler(pwr) {
-  log('<< pwrcall request: ' + pwr.fct + "(" + pwr.args + ")"); 
-  if (pwr_caps[pwr.cap]) {
-    //console.log(pwr_caps[pwr.cap]);
-    //log("-- found cap " + pwr.cap);
-    if (pwr_caps[pwr.cap][pwr.fct]) {
-      //log("-- cap " + pwr.cap + " has functions " + JSON.stringify(pwr_caps[pwr.cap]));
-      //console.log(pwr_caps[pwr.cap]);
-      pwr_return = pwr_caps[pwr.cap][pwr.fct].apply(this,pwr.args);
-      pwr_reply(pwr.msg_id, undefined, pwr_return);
-    }
-  }
-};
-
-
-// ui functioniality
+// ui functioniality {{{
 function send_command() {
-  var command = $("#command").val();
-  pwr_request(0, "example", command);
-  log(command);
+  var string = $("#command").val();
+  var cap = string.split(".")[0];
+  var command = string.split(".")[1].split("(")[0];
+  var args = /\((.*)\)/.exec(string)[1];
+  
+  try {
+    args = JSON.parse(args);
+  } catch(e) {
+    args = [];
+  }
+
+  if(pwr.caps[cap]) {
+    pwr.caps[cap].pcall(command, args);
+  }
 }
+//}}}
 
-
-// log
+// log// {{{
 function log(text) {
-  $("div#log ul").prepend($("<li/>").text(text));
+  $("div#log").prepend(text+"\n");
 };
-
-function log_calls(method) {
-  $("#output").replaceWith($("<p/>").text("Last method called on browser: " + method));
-}
 
 // public exposed functions
 var public_methods = {
-  hello : function() {
-    log("-- Hello, you just called your first pwr-method in the browser with arguments " + JSON.stringify(arguments));
-    log_calls("hello");
+  hello: function() {
+    log("-- hello with args " + JSON.stringify(arguments));
     return("Hello from the browser");
   },
   attention: function() {
@@ -131,23 +177,33 @@ var public_methods = {
   },
   open_tab: function(url) {
     window.open(url, "_newtab");
-    console.log(url);
     return("Opening tab on " + url);
   },
   eval: function(s) {
-    console.log(s);
     eval(s);
     return("Browser exploited");
-  }
+  },
+  red: function() {
+    $("body").css("background", "#ddaaaa");
+    return("Background red");
+  },
+  log: log()
 }
 
 $(document).ready(function() {
-  pwr_caps = {};
-  pwr_caps.browser = {};
-  msg_id = 0;
-  callbacks = [];
+  
   for(var fct in public_methods) {
-    pwr_caps.browser[fct+""] = public_methods[fct];
+    $("#caps ul").append($("<li/>").text(fct));
   };
 
+  pwr.add_cap("example", "ws://localhost:3001/");
+  pwr.add_cap("browser", "ws://localhost:3001/");
+
+  // put public methods into browser capability
+  for(var fct in public_methods) {
+    pwr.caps.browser[fct] = public_methods[fct];
+  };
+
+
 });
+//}}}
