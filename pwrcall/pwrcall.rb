@@ -138,6 +138,10 @@ class PwrNode
 		@extern[ref] = @extern[ref] || PwrObj.new(con, ref)
 	end
 
+	def open_ref_base64(ref, con)
+		open_ref(Base64.decode64(ref), con)
+	end
+
 	def listen(server, port, handler, packers=nil, keypair=nil, &block)
 		EventMachine::start_server(server, port, handler, nil, keypair) do |c|
 			pwrconn = PwrCallConnection.new(self, packers, true)
@@ -170,7 +174,7 @@ class PwrResult
 			return @cached
 		else
 			@yield = true
-			Fiber.yield
+			return Fiber.yield
 		end
 	end
 

@@ -16,10 +16,6 @@ optparse = OptionParser.new do |opts|
 	opts.on('-o', '--openurl URL', 'Open a pwrcall URL') do |u|
 		options[:url] = u
 	end
-
-	opts.on('-p', '--plain', 'Connect plain (unencrypted)') do
-		options[:plain] = true
-	end
 end
 optparse.parse!
 
