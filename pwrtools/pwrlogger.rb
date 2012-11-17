@@ -17,9 +17,6 @@ if $logger == nil
 		elsif level == "E" or level == "F"
 			level = level.red
 		end
-#		puts "#{datetime.strftime("%H:%M:%S")} [#{level}] #{msg}"
-
-#		puts if $pry_blocked
 
 		### More fixes for readlines which are longer than incoming logs
 		if defined?(Pry) and Module.const_defined?("RbReadline")
@@ -27,7 +24,8 @@ if $logger == nil
 			printf " " * RbReadline.rl_line_buffer.length
 		end
 
-		puts "\r[#{level}] #{msg}"
+		puts "\r#{datetime.strftime("%H:%M:%S")} [#{level}] #{msg}"
+#		puts "\r[#{level}] #{msg}"
 
 		### Prevent async log messages from screwing up the Pry readline
 		### this is getting annoying :-(
