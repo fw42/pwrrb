@@ -376,7 +376,7 @@ class PwrCallConnection < PwrConnection
 	def handle_packet(packet)
 		opcode, msgid = packet[0..1]
 		if opcode == OP[:request] then
-			handle_request(msgid, packet[2], packet[3], packet[4])
+			handle_request(msgid, packet[2], packet[3].to_s, packet[4])
 		elsif opcode == OP[:response] then
 			handle_response(msgid, packet[2], packet[3])
 		elsif opcode == OP[:notify] then
