@@ -24,7 +24,7 @@ if $logger == nil
 			printf " " * RbReadline.rl_line_buffer.length
 		end
 
-		puts "\r#{datetime.strftime("%H:%M:%S")} [#{level}] #{msg}"
+		puts "\r#{datetime.strftime("%Y/%m/%d %H:%M:%S")} [#{level}] #{msg}"
 #		puts "\r[#{level}] #{msg}"
 
 		### Prevent async log messages from screwing up the Pry readline
